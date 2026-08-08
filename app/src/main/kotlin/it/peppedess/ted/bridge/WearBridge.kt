@@ -2,6 +2,7 @@ package it.peppedess.ted.bridge
 
 import android.content.Context
 import android.util.Log
+import com.google.android.gms.wearable.Asset
 import com.google.android.gms.wearable.CapabilityClient
 import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
@@ -30,7 +31,7 @@ class WearBridge(context: Context) {
         Log.d(TAG, "pubblicate ${trimmed.chats.size} chat, ${payload.size} byte")
     }
 
-    suspend fun publishThread(thread: ChatThread) {
+    suspend fun publishThread(thread: ChatThread, assets: Map<String, ByteArray> = emptyMap()) {
         var current = thread
         // Stesso tetto della lista chat: meglio meno messaggi che nessun invio.
         while (current.messages.size > 5 &&
@@ -39,8 +40,16 @@ class WearBridge(context: Context) {
             current = current.copy(messages = current.messages.drop(5))
         }
         val payload = TedCodec.encode(current)
-        putItem(TedPaths.thread(current.chatId), payload, current.revision)
-        Log.d(TAG, "pubblicati ${current.messages.size} messaggi, ${payload.size} byte")
+        // Gli Asset viaggiano su un canale separato: non contano nei 100 KB.
+        val request = PutDataMapRequest.create(TedPaths.thread(current.chatId)).apply {
+            dataMap.putByteArray(TedPaths.KEY_PAYLOAD, payload)
+            dataMap.putLong(TedPaths.KEY_REVISION, current.revision)
+            assets.forEach { (key, bytes) ->
+                dataMap.putAsset(key, Asset.createFromBytes(bytes))
+            }
+        }.asPutDataRequest().setUrgent()
+        dataClient.putDataItem(request).await()
+        Log.d(TAG, "pubblicati ${current.messages.size} messaggi, ${payload.size} byte, ${assets.size} asset")
     }
 
     suspend fun publishStatus(state: BridgeState, detail: String?, revision: Long) {
@@ -92,7 +101,17 @@ class WearBridge(context: Context) {
             .getOrDefault(emptyList())
     }
 
+    suspend fun publishVoice(chatId: Long, messageId: Long, bytes: ByteArray) {
+        val request = PutDataMapRequest.create(TedPaths.voiceChannel(chatId, messageId)).apply {
+            dataMap.putAsset(KEY_VOICE, Asset.createFromBytes(bytes))
+            dataMap.putLong(TedPaths.KEY_REVISION, System.currentTimeMillis())
+        }.asPutDataRequest().setUrgent()
+        dataClient.putDataItem(request).await()
+        Log.d(TAG, "vocale pubblicato: ${bytes.size} byte")
+    }
+
     companion object {
+        const val KEY_VOICE = "voice"
         private const val TAG = "WearBridge"
     }
 }

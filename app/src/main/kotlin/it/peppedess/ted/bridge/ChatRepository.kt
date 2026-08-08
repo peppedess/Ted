@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.drinkless.tdlib.TdApi
+import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -126,19 +127,80 @@ class ChatRepository(
      * Alla prima chiamata TDLib risponde spesso con pochi o zero messaggi,
      * perche deve ancora tirarli giu dal server: per questo riproviamo.
      */
-    suspend fun loadThread(chatId: Long, limit: Int): ChatThread {
+    /** Thread piu gli Asset binari che lo accompagnano. */
+    data class ThreadPayload(
+        val thread: ChatThread,
+        val assets: Map<String, ByteArray>
+    )
+
+    suspend fun loadThread(chatId: Long, limit: Int): ThreadPayload {
         val chat = td.send(TdApi.GetChat().apply { this.chatId = chatId })
 
-        val messages = fetchHistory(chatId, limit)
+        val rawMessages = fetchRaw(chatId, limit)
+        val messages = rawMessages.map { MessageMapper.toMessage(it, users) }
+
+        // Solo le foto piu recenti: ogni miniatura e un trasferimento Bluetooth.
+        val assets = mutableMapOf<String, ByteArray>()
+        rawMessages
+            .filter { it.content is TdApi.MessagePhoto }
+            .take(MAX_PHOTOS)
+            .forEach { message ->
+                photoThumb(message)?.let { assets[MessageMapper.photoKey(message.id)] = it }
+            }
 
         revision += 1
-        return ChatThread(
-            chatId = chatId,
-            title = chat.title.ifBlank { "Senza nome" },
-            // TDLib restituisce dal piu recente: sull'orologio li vogliamo cronologici.
-            messages = messages.reversed(),
-            revision = revision
+        return ThreadPayload(
+            thread = ChatThread(
+                chatId = chatId,
+                title = chat.title.ifBlank { "Senza nome" },
+                // TDLib restituisce dal piu recente: sull'orologio li vogliamo cronologici.
+                messages = messages.reversed(),
+                revision = revision
+            ),
+            assets = assets
         )
+    }
+
+    /** Scarica un file TDLib e restituisce il percorso locale, o null. */
+    private suspend fun downloadFile(fileId: Int): String? = runCatching {
+        td.send(
+            TdApi.DownloadFile().apply {
+                this.fileId = fileId
+                priority = 16
+                offset = 0
+                limit = 0
+                synchronous = true
+            }
+        ).local?.takeIf { it.isDownloadingCompleted }?.path?.takeIf { it.isNotEmpty() }
+    }.getOrNull()
+
+    private suspend fun photoThumb(message: TdApi.Message): ByteArray? {
+        val content = message.content as? TdApi.MessagePhoto ?: return null
+        val sizes = content.photo.sizes.filterNotNull()
+        if (sizes.isEmpty()) return null
+        // La piu piccola che superi i 200 px, altrimenti la piu grande disponibile.
+        val chosen = sizes.firstOrNull { it.width >= 200 || it.height >= 200 } ?: sizes.last()
+        val path = downloadFile(chosen.photo.id) ?: return null
+        return MediaScaler.thumbnail(path)?.bytes
+    }
+
+    /** Vocale, scaricato solo su richiesta esplicita dall'orologio. */
+    suspend fun voiceBytes(targetChatId: Long, targetMessageId: Long): ByteArray? {
+        val message = runCatching {
+            td.send(
+                TdApi.GetMessage().apply {
+                    chatId = targetChatId
+                    messageId = targetMessageId
+                }
+            )
+        }.getOrNull() ?: return null
+
+        val voice = (message.content as? TdApi.MessageVoiceNote)?.voiceNote ?: return null
+        val path = downloadFile(voice.voice.id) ?: return null
+        val file = File(path)
+        // Oltre il mezzo mega il trasferimento su Bluetooth diventa penoso.
+        if (!file.exists() || file.length() > 512 * 1024) return null
+        return runCatching { file.readBytes() }.getOrNull()
     }
 
     /**
@@ -146,7 +208,7 @@ class ChatRepository(
      * per risalire la cronologia va richiamato a catena, passando ogni volta
      * l'id del piu vecchio ricevuto. Da qui il ciclo.
      */
-    private suspend fun fetchHistory(chatId: Long, target: Int): List<ChatMessage> {
+    private suspend fun fetchRaw(chatId: Long, target: Int): List<TdApi.Message> {
         val collected = mutableListOf<TdApi.Message>()
         var fromId = 0L
         var attempts = 0
@@ -179,7 +241,7 @@ class ChatRepository(
             fromId = collected.last().id
         }
 
-        return collected.map { MessageMapper.toMessage(it, users) }
+        return collected
     }
 
     suspend fun sendText(targetChatId: Long, body: String, replyToId: Long?) {
@@ -238,5 +300,6 @@ class ChatRepository(
 
     companion object {
         private const val TAG = "ChatRepository"
+        private const val MAX_PHOTOS = 12
     }
 }

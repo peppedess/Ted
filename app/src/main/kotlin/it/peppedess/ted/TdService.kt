@@ -119,21 +119,26 @@ class TdService : LifecycleService() {
             is WatchCommand.Wake -> repository.requestRefresh()
 
             is WatchCommand.OpenChat -> {
-                val thread = repository.loadThread(command.chatId, command.limit)
-                bridge.publishThread(thread)
+                val payload = repository.loadThread(command.chatId, command.limit)
+                bridge.publishThread(payload.thread, payload.assets)
             }
 
             is WatchCommand.SendText -> {
                 repository.sendText(command.chatId, command.text, command.replyTo)
                 // Ricarichiamo subito: cosi il messaggio appena inviato
                 // compare sull'orologio senza aspettare l'update di TDLib.
-                bridge.publishThread(repository.loadThread(command.chatId, 30))
+                val payload = repository.loadThread(command.chatId, 30)
+                bridge.publishThread(payload.thread, payload.assets)
                 repository.requestRefresh()
             }
 
             is WatchCommand.MarkRead -> repository.markRead(command.chatId, command.upTo)
 
-            is WatchCommand.RequestVoice -> Unit // riproduzione vocali: fase successiva
+            is WatchCommand.RequestVoice -> {
+                repository.voiceBytes(command.chatId, command.messageId)?.let { bytes ->
+                    bridge.publishVoice(command.chatId, command.messageId, bytes)
+                }
+            }
 
             is WatchCommand.Sleep -> stopSelf()
         }
