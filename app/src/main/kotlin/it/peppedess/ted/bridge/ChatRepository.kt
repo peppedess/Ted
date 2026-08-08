@@ -4,12 +4,16 @@ import android.util.Log
 import it.peppedess.ted.protocol.ChatList
 import it.peppedess.ted.protocol.ChatMessage
 import it.peppedess.ted.protocol.ChatThread
+import it.peppedess.ted.protocol.MessageAlert
 import it.peppedess.ted.protocol.TedPaths
 import it.peppedess.ted.tdlib.TdClient
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -33,6 +37,13 @@ class ChatRepository(
 
     private val _chats = MutableStateFlow(ChatList(emptyList(), 0))
     val chats: StateFlow<ChatList> = _chats.asStateFlow()
+
+    private val _alerts = MutableSharedFlow<MessageAlert>(
+        replay = 0,
+        extraBufferCapacity = 16,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
+    val alerts: SharedFlow<MessageAlert> = _alerts
 
     private var revision = 0L
 
@@ -60,6 +71,12 @@ class ChatRepository(
             is TdApi.UpdateUser -> {
                 val u = obj.user
                 users[u.id] = u.firstName.ifBlank { u.lastName }.ifBlank { "?" }
+            }
+
+            is TdApi.UpdateNewMessage -> {
+                val message = obj.message
+                if (!message.isOutgoing) scope.launch { emitAlert(message) }
+                requestRefresh()
             }
 
             is TdApi.UpdateNewChat,
@@ -170,6 +187,31 @@ class ChatRepository(
                 }
             )
         }
+    }
+
+    private suspend fun emitAlert(message: TdApi.Message) {
+        val chat = runCatching {
+            td.send(TdApi.GetChat().apply { chatId = message.chatId })
+        }.getOrNull() ?: return
+
+        // Le chat silenziate restano silenziate anche sul polso.
+        if ((chat.notificationSettings?.muteFor ?: 0) > 0) return
+
+        val sender = when (val s = message.senderId) {
+            is TdApi.MessageSenderUser -> users[s.userId].orEmpty()
+            else -> ""
+        }
+
+        _alerts.tryEmit(
+            MessageAlert(
+                chatId = message.chatId,
+                chatTitle = chat.title.ifBlank { "Senza nome" },
+                sender = sender,
+                preview = ChatMapper.describe(message.content).take(160),
+                messageId = message.id,
+                date = message.date.toLong()
+            )
+        )
     }
 
     companion object {

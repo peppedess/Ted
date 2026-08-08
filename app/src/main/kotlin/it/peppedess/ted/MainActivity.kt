@@ -35,6 +35,9 @@ private fun PhoneRoot() {
     val client = remember { Td.get(context) }
     val stage by client.stage.collectAsState()
     val bridgeRunning by TdService.running.collectAsState()
+    val alertsEnabled by Settings.alertsEnabled.collectAsState()
+
+    LaunchedEffect(Unit) { Settings.load(context) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -57,6 +60,8 @@ private fun PhoneRoot() {
             client = client,
             stage = stage,
             bridgeRunning = bridgeRunning,
+            alertsEnabled = alertsEnabled,
+            onAlertsChange = { Settings.setAlertsEnabled(context, it) },
             onReady = { TdService.start(context) },
             onStop = { TdService.stop(context) },
             modifier = Modifier.padding(inner)

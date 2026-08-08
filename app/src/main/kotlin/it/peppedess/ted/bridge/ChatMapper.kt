@@ -38,7 +38,7 @@ object ChatMapper {
             else -> null
         }
 
-    private fun describe(content: TdApi.MessageContent): String = when (content) {
+    fun describe(content: TdApi.MessageContent): String = when (content) {
         is TdApi.MessageText -> content.text.text
         is TdApi.MessagePhoto -> content.caption.text.ifBlank { "Foto" }
         is TdApi.MessageVideo -> content.caption.text.ifBlank { "Video" }

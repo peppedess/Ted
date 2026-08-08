@@ -16,6 +16,7 @@ import it.peppedess.ted.protocol.WatchCommand
 import it.peppedess.ted.tdlib.Td
 import it.peppedess.ted.tdlib.TdClient
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,6 +32,9 @@ class TdService : LifecycleService() {
     private lateinit var td: TdClient
     private lateinit var repository: ChatRepository
     private lateinit var bridge: WearBridge
+
+    @Volatile
+    private var lastActivity = System.currentTimeMillis()
 
     override fun onCreate() {
         super.onCreate()
@@ -76,6 +80,31 @@ class TdService : LifecycleService() {
             }
         }
 
+        Settings.load(this)
+
+        // Avvisi verso l'orologio, solo se l'utente li ha accesi.
+        lifecycleScope.launch {
+            repository.alerts.collect { alert ->
+                if (!Settings.alertsEnabled.value) return@collect
+                runCatching { bridge.sendAlert(alert) }
+            }
+        }
+
+        // Spegnimento per inattivita: senza, START_STICKY terrebbe TDLib
+        // connesso per giorni anche senza mai guardare l'orologio.
+        lifecycleScope.launch {
+            while (true) {
+                delay(60_000)
+                if (Settings.alertsEnabled.value) continue
+                val idleMinutes = (System.currentTimeMillis() - lastActivity) / 60_000
+                if (idleMinutes >= Settings.IDLE_MINUTES) {
+                    android.util.Log.d("TdService", "inattivo da $idleMinutes min, mi spengo")
+                    stopSelf()
+                    break
+                }
+            }
+        }
+
         lifecycleScope.launch {
             for (command in commands) {
                 runCatching { handle(command) }
@@ -85,6 +114,7 @@ class TdService : LifecycleService() {
     }
 
     private suspend fun handle(command: WatchCommand) {
+        lastActivity = System.currentTimeMillis()
         when (command) {
             is WatchCommand.Wake -> repository.requestRefresh()
 
@@ -116,7 +146,8 @@ class TdService : LifecycleService() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
-        return START_STICKY
+        lastActivity = System.currentTimeMillis()
+        return START_NOT_STICKY
     }
 
     private fun notificationManager(): NotificationManager =

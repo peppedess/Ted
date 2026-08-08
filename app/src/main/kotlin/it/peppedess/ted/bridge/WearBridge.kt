@@ -2,12 +2,14 @@ package it.peppedess.ted.bridge
 
 import android.content.Context
 import android.util.Log
+import com.google.android.gms.wearable.CapabilityClient
 import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
 import it.peppedess.ted.protocol.BridgeState
 import it.peppedess.ted.protocol.BridgeStatus
 import it.peppedess.ted.protocol.ChatList
 import it.peppedess.ted.protocol.ChatThread
+import it.peppedess.ted.protocol.MessageAlert
 import it.peppedess.ted.protocol.TedCodec
 import it.peppedess.ted.protocol.TedPaths
 import kotlinx.coroutines.tasks.await
@@ -15,7 +17,11 @@ import kotlinx.coroutines.tasks.await
 /** Lato telefono del ponte: pubblica gli snapshot sul Data Layer. */
 class WearBridge(context: Context) {
 
-    private val dataClient = Wearable.getDataClient(context.applicationContext)
+    private val app = context.applicationContext
+    private val dataClient = Wearable.getDataClient(app)
+    private val messageClient = Wearable.getMessageClient(app)
+    private val capabilityClient = Wearable.getCapabilityClient(app)
+    private val nodeClient = Wearable.getNodeClient(app)
 
     suspend fun publishChats(list: ChatList) {
         val trimmed = fitPayload(list)
@@ -62,6 +68,28 @@ class WearBridge(context: Context) {
             current = current.copy(chats = current.chats.dropLast(3))
         }
         return current
+    }
+
+    /**
+     * Gli avvisi passano da MessageClient e non da DataClient: un messaggio
+     * nuovo e un evento, non uno stato, e non deve sopravvivere allo spegnimento.
+     */
+    suspend fun sendAlert(alert: MessageAlert) {
+        val payload = TedCodec.encode(alert)
+        watchNodes().forEach { nodeId ->
+            runCatching { messageClient.sendMessage(nodeId, TedPaths.ALERT, payload).await() }
+        }
+    }
+
+    private suspend fun watchNodes(): List<String> {
+        val byCapability = runCatching {
+            capabilityClient
+                .getCapability(TedPaths.CAPABILITY_WATCH, CapabilityClient.FILTER_REACHABLE)
+                .await().nodes.map { it.id }
+        }.getOrDefault(emptyList())
+        if (byCapability.isNotEmpty()) return byCapability
+        return runCatching { nodeClient.connectedNodes.await().map { it.id } }
+            .getOrDefault(emptyList())
     }
 
     companion object {

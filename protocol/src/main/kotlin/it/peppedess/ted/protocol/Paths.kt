@@ -21,6 +21,9 @@ object TedPaths {
     // --- MessageClient: comandi, orologio -> telefono ---
     const val COMMAND = "/ted/cmd"
 
+    // --- MessageClient: avvisi, telefono -> orologio ---
+    const val ALERT = "/ted/alert"
+
     // --- ChannelClient: vocali on demand ---
     const val CHANNEL_VOICE = "/ted/voice"
 

@@ -120,3 +120,14 @@ sealed interface WatchCommand {
     @SerialName("sleep")
     data object Sleep : WatchCommand
 }
+
+/** Avviso di messaggio nuovo, telefono -> orologio via MessageClient. */
+@Serializable
+data class MessageAlert(
+    val chatId: Long,
+    val chatTitle: String,
+    val sender: String,
+    val preview: String,
+    val messageId: Long,
+    val date: Long
+)
