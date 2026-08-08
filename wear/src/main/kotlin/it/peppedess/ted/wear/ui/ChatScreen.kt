@@ -24,7 +24,7 @@ import androidx.wear.compose.material3.ListHeader
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.ScreenScaffold
 import androidx.wear.compose.material3.Text
-import androidx.wear.input.RemoteInputIntentHelper
+import android.content.Intent
 import it.peppedess.ted.protocol.ChatMessage
 import it.peppedess.ted.protocol.MessageContent
 
@@ -99,16 +99,24 @@ fun ChatScreen(
     }
 }
 
-private fun buildInputIntent() = RemoteInputIntentHelper.createActionIntent().also { intent ->
-    RemoteInputIntentHelper.putRemoteInputsExtra(
-        intent,
-        listOf(
-            RemoteInput.Builder(KEY_REPLY)
-                .setLabel("Rispondi")
-                .build()
-        )
+/**
+ * Apre l'input di sistema di Wear OS: dettatura, tastiera, scrittura a mano
+ * ed emoji in un colpo solo. Costruiamo l'intent a mano invece di usare
+ * RemoteInputIntentHelper, la cui superficie API cambia fra le versioni.
+ */
+private fun buildInputIntent(): Intent {
+    val inputs = arrayOf(
+        RemoteInput.Builder(KEY_REPLY)
+            .setLabel("Rispondi")
+            .build()
     )
+    return Intent(ACTION_REMOTE_INPUT).apply {
+        putExtra(EXTRA_REMOTE_INPUTS, inputs)
+    }
 }
+
+private const val ACTION_REMOTE_INPUT = "android.support.wearable.input.action.REMOTE_INPUT"
+private const val EXTRA_REMOTE_INPUTS = "android.support.wearable.input.extra.REMOTE_INPUTS"
 
 @Composable
 private fun QuickReplies(onSend: (String) -> Unit) {

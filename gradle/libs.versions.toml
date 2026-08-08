@@ -9,7 +9,6 @@ lifecycle = "2.9.0"
 activityCompose = "1.10.1"
 wearCompose = "1.5.0"
 wearToolingPreview = "1.0.0"
-wearInput = "1.1.0"
 playServicesWearable = "19.0.0"
 coil = "3.1.0"
 
@@ -30,7 +29,6 @@ wear-compose-material3 = { module = "androidx.wear.compose:compose-material3", v
 wear-compose-foundation = { module = "androidx.wear.compose:compose-foundation", version.ref = "wearCompose" }
 wear-compose-navigation = { module = "androidx.wear.compose:compose-navigation", version.ref = "wearCompose" }
 wear-tooling-preview = { module = "androidx.wear:wear-tooling-preview", version.ref = "wearToolingPreview" }
-wear-input = { module = "androidx.wear:wear-input", version.ref = "wearInput" }
 play-services-wearable = { module = "com.google.android.gms:play-services-wearable", version.ref = "playServicesWearable" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
