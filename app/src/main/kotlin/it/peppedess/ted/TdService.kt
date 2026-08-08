@@ -9,8 +9,13 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
+import it.peppedess.ted.bridge.ChatRepository
+import it.peppedess.ted.bridge.WearBridge
+import it.peppedess.ted.protocol.BridgeState
+import it.peppedess.ted.protocol.WatchCommand
 import it.peppedess.ted.tdlib.Td
 import it.peppedess.ted.tdlib.TdClient
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,12 +23,14 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 /**
- * Tiene vivo il processo mentre TDLib e connesso.
- *
- * Non e un servizio permanente: lo avviamo quando serve e lo fermiamo
- * quando l'orologio non ha piu bisogno del ponte.
+ * Tiene vivo il processo mentre TDLib e connesso, e fa da collante
+ * fra il repository delle chat e il ponte verso l'orologio.
  */
 class TdService : LifecycleService() {
+
+    private lateinit var td: TdClient
+    private lateinit var repository: ChatRepository
+    private lateinit var bridge: WearBridge
 
     override fun onCreate() {
         super.onCreate()
@@ -31,7 +38,11 @@ class TdService : LifecycleService() {
         createChannel()
         startForeground(NOTIFICATION_ID, buildNotification("Avvio..."))
 
-        val td = Td.get(this)
+        td = Td.get(this)
+        bridge = WearBridge(this)
+        repository = ChatRepository(td, lifecycleScope)
+        repository.start()
+
         lifecycleScope.launch {
             td.stage.collectLatest { stage ->
                 val text = when (stage) {
@@ -42,7 +53,42 @@ class TdService : LifecycleService() {
                     else -> "In attesa di accesso"
                 }
                 notificationManager().notify(NOTIFICATION_ID, buildNotification(text))
+
+                val bridgeState = when (stage) {
+                    is TdClient.Stage.Ready -> BridgeState.READY
+                    is TdClient.Stage.Starting -> BridgeState.CONNECTING
+                    is TdClient.Stage.Failed -> BridgeState.ERROR
+                    is TdClient.Stage.LoggedOut -> BridgeState.OFFLINE
+                    else -> BridgeState.AUTH_REQUIRED
+                }
+                runCatching {
+                    bridge.publishStatus(bridgeState, text, System.currentTimeMillis())
+                }
+
+                if (stage is TdClient.Stage.Ready) repository.requestRefresh()
             }
+        }
+
+        lifecycleScope.launch {
+            repository.chats.collectLatest { list ->
+                if (list.chats.isEmpty()) return@collectLatest
+                runCatching { bridge.publishChats(list) }
+            }
+        }
+
+        lifecycleScope.launch {
+            for (command in commands) handle(command)
+        }
+    }
+
+    private fun handle(command: WatchCommand) {
+        when (command) {
+            is WatchCommand.Wake -> repository.requestRefresh()
+            is WatchCommand.OpenChat -> Unit   // thread: prossima fase
+            is WatchCommand.SendText -> Unit   // invio: prossima fase
+            is WatchCommand.MarkRead -> Unit
+            is WatchCommand.RequestVoice -> Unit
+            is WatchCommand.Sleep -> stopSelf()
         }
     }
 
@@ -87,6 +133,16 @@ class TdService : LifecycleService() {
 
         /** Vero mentre il servizio e vivo. Serve alla UI per non mentire all'utente. */
         val running: StateFlow<Boolean> = _running.asStateFlow()
+
+        /**
+         * Buca delle lettere fra il WearableListenerService e il servizio:
+         * il primo puo essere istanziato prima che il secondo sia pronto.
+         */
+        private val commands = Channel<WatchCommand>(capacity = 32)
+
+        fun deliver(command: WatchCommand) {
+            commands.trySend(command)
+        }
 
         // Canale nuovo: l'importanza di uno gia creato non si puo alzare.
         private const val CHANNEL_ID = "ted_bridge_v2"
