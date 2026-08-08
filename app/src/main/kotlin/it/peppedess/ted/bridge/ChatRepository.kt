@@ -22,16 +22,19 @@ import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Mantiene lo snapshot della lista chat leggendo da TDLib.
- *
- * TDLib non offre una "lista pronta": va caricata e poi tenuta aggiornata
- * a colpi di update. Qui li accorpiamo con un debounce, perche all'avvio
- * ne arrivano centinaia in pochi secondi.
+ * Mantiene lo snapshot della lista chat leggendo da TDLib, serve su richiesta
+ * la cronologia delle conversazioni e scarica i media.
  */
 class ChatRepository(
     private val td: TdClient,
     private val scope: CoroutineScope
 ) {
+
+    /** Thread piu gli Asset binari che lo accompagnano. */
+    data class ThreadPayload(
+        val thread: ChatThread,
+        val assets: Map<String, ByteArray>
+    )
 
     private val users = ConcurrentHashMap<Long, String>()
     private val refreshRequests = Channel<Unit>(Channel.CONFLATED)
@@ -54,7 +57,7 @@ class ChatRepository(
         }
         scope.launch {
             for (ignored in refreshRequests) {
-                // Finestra di calma: gli update arrivano a raffica, la lista serve una volta sola.
+                // Gli update arrivano a raffica: la lista serve una volta sola.
                 delay(1_200)
                 while (refreshRequests.tryReceive().isSuccess) Unit
                 runCatching { refresh() }
@@ -91,6 +94,31 @@ class ChatRepository(
         }
     }
 
+    private suspend fun emitAlert(message: TdApi.Message) {
+        val chat = runCatching {
+            td.send(TdApi.GetChat().apply { chatId = message.chatId })
+        }.getOrNull() ?: return
+
+        // Le chat silenziate restano silenziate anche sul polso.
+        if ((chat.notificationSettings?.muteFor ?: 0) > 0) return
+
+        val sender = when (val s = message.senderId) {
+            is TdApi.MessageSenderUser -> users[s.userId].orEmpty()
+            else -> ""
+        }
+
+        _alerts.tryEmit(
+            MessageAlert(
+                chatId = message.chatId,
+                chatTitle = chat.title.ifBlank { "Senza nome" },
+                sender = sender,
+                preview = ChatMapper.describe(message.content).take(160),
+                messageId = message.id,
+                date = message.date.toLong()
+            )
+        )
+    }
+
     suspend fun refresh() {
         // LoadChats risponde 404 quando non c'e altro da caricare: non e un errore.
         runCatching {
@@ -121,18 +149,6 @@ class ChatRepository(
         Log.d(TAG, "lista chat aggiornata: ${summaries.size} voci, rev $revision")
     }
 
-    /**
-     * Carica la cronologia di una chat.
-     *
-     * Alla prima chiamata TDLib risponde spesso con pochi o zero messaggi,
-     * perche deve ancora tirarli giu dal server: per questo riproviamo.
-     */
-    /** Thread piu gli Asset binari che lo accompagnano. */
-    data class ThreadPayload(
-        val thread: ChatThread,
-        val assets: Map<String, ByteArray>
-    )
-
     suspend fun loadThread(chatId: Long, limit: Int): ThreadPayload {
         val chat = td.send(TdApi.GetChat().apply { this.chatId = chatId })
 
@@ -153,12 +169,53 @@ class ChatRepository(
             thread = ChatThread(
                 chatId = chatId,
                 title = chat.title.ifBlank { "Senza nome" },
-                // TDLib restituisce dal piu recente: sull'orologio li vogliamo cronologici.
+                // TDLib restituisce dal piu recente: sul polso li vogliamo cronologici.
                 messages = messages.reversed(),
                 revision = revision
             ),
             assets = assets
         )
+    }
+
+    /**
+     * TDLib con fromMessageId = 0 restituisce solo l'ultimo messaggio:
+     * per risalire la cronologia va richiamato a catena, passando ogni volta
+     * l'id del piu vecchio ricevuto. Da qui il ciclo.
+     */
+    private suspend fun fetchRaw(chatId: Long, target: Int): List<TdApi.Message> {
+        val collected = mutableListOf<TdApi.Message>()
+        var fromId = 0L
+        var attempts = 0
+
+        while (collected.size < target && attempts < 12) {
+            attempts++
+            val batch = runCatching {
+                td.send(
+                    TdApi.GetChatHistory().apply {
+                        this.chatId = chatId
+                        fromMessageId = fromId
+                        offset = 0
+                        limit = (target - collected.size).coerceAtLeast(1)
+                        onlyLocal = false
+                    }
+                ).messages.filterNotNull()
+            }.getOrNull() ?: break
+
+            if (batch.isEmpty()) {
+                // Alla prima chiamata la cronologia puo non essere ancora
+                // scesa dal server: diamo tempo e riproviamo una volta.
+                if (collected.isEmpty() && attempts <= 2) {
+                    delay(600)
+                    continue
+                }
+                break
+            }
+
+            collected += batch
+            fromId = collected.last().id
+        }
+
+        return collected
     }
 
     /** Scarica un file TDLib e restituisce il percorso locale, o null. */
@@ -203,47 +260,6 @@ class ChatRepository(
         return runCatching { file.readBytes() }.getOrNull()
     }
 
-    /**
-     * TDLib con fromMessageId = 0 restituisce solo l'ultimo messaggio:
-     * per risalire la cronologia va richiamato a catena, passando ogni volta
-     * l'id del piu vecchio ricevuto. Da qui il ciclo.
-     */
-    private suspend fun fetchRaw(chatId: Long, target: Int): List<TdApi.Message> {
-        val collected = mutableListOf<TdApi.Message>()
-        var fromId = 0L
-        var attempts = 0
-
-        while (collected.size < target && attempts < 12) {
-            attempts++
-            val batch = runCatching {
-                td.send(
-                    TdApi.GetChatHistory().apply {
-                        this.chatId = chatId
-                        fromMessageId = fromId
-                        offset = 0
-                        limit = (target - collected.size).coerceAtLeast(1)
-                        onlyLocal = false
-                    }
-                ).messages.filterNotNull()
-            }.getOrNull() ?: break
-
-            if (batch.isEmpty()) {
-                // Alla prima chiamata la cronologia puo non essere ancora
-                // scesa dal server: diamo tempo e riproviamo una volta.
-                if (collected.isEmpty() && attempts <= 2) {
-                    delay(600)
-                    continue
-                }
-                break
-            }
-
-            collected += batch
-            fromId = collected.last().id
-        }
-
-        return collected
-    }
-
     suspend fun sendText(targetChatId: Long, body: String, replyToId: Long?) {
         val request = TdApi.SendMessage().apply {
             chatId = targetChatId
@@ -273,34 +289,8 @@ class ChatRepository(
         }
     }
 
-    private suspend fun emitAlert(message: TdApi.Message) {
-        val chat = runCatching {
-            td.send(TdApi.GetChat().apply { chatId = message.chatId })
-        }.getOrNull() ?: return
-
-        // Le chat silenziate restano silenziate anche sul polso.
-        if ((chat.notificationSettings?.muteFor ?: 0) > 0) return
-
-        val sender = when (val s = message.senderId) {
-            is TdApi.MessageSenderUser -> users[s.userId].orEmpty()
-            else -> ""
-        }
-
-        _alerts.tryEmit(
-            MessageAlert(
-                chatId = message.chatId,
-                chatTitle = chat.title.ifBlank { "Senza nome" },
-                sender = sender,
-                preview = ChatMapper.describe(message.content).take(160),
-                messageId = message.id,
-                date = message.date.toLong()
-            )
-        )
-    }
-
     companion object {
         private const val TAG = "ChatRepository"
-        private const val MAX_PHOTOS = 12
         private const val MAX_PHOTOS = 12
     }
 }
