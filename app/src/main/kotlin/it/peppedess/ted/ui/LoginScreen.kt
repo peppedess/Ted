@@ -32,6 +32,8 @@ fun LoginScreen(
     client: TdClient,
     stage: TdClient.Stage,
     onReady: () -> Unit,
+    onStop: () -> Unit,
+    bridgeRunning: Boolean,
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
@@ -85,7 +87,9 @@ fun LoginScreen(
             )
 
             is TdClient.Stage.Ready -> ReadyStep(
+                bridgeRunning = bridgeRunning,
                 onContinue = onReady,
+                onStop = onStop,
                 onLogout = { submit { client.logOut() } }
             )
 
@@ -206,7 +210,12 @@ private fun PasswordStep(hint: String, busy: Boolean, onSubmit: (String) -> Unit
 }
 
 @Composable
-private fun ReadyStep(onContinue: () -> Unit, onLogout: () -> Unit) {
+private fun ReadyStep(
+    bridgeRunning: Boolean,
+    onContinue: () -> Unit,
+    onStop: () -> Unit,
+    onLogout: () -> Unit
+) {
     Text(
         "Connesso a Telegram",
         style = MaterialTheme.typography.titleMedium,
@@ -214,18 +223,18 @@ private fun ReadyStep(onContinue: () -> Unit, onLogout: () -> Unit) {
         modifier = Modifier.padding(top = 8.dp)
     )
     Text(
-        "Puoi chiudere l'app: il ponte resta attivo per l'orologio.",
+        if (bridgeRunning) "Ponte attivo. Puoi chiudere l'app." else "Il ponte non e ancora avviato.",
         style = MaterialTheme.typography.bodySmall,
         textAlign = TextAlign.Center,
         modifier = Modifier.padding(top = 8.dp)
     )
     Button(
-        onClick = onContinue,
+        onClick = if (bridgeRunning) onStop else onContinue,
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 24.dp)
     ) {
-        Text("Avvia il ponte")
+        Text(if (bridgeRunning) "Ferma il ponte" else "Avvia il ponte")
     }
     TextButton(
         onClick = onLogout,

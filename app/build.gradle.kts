@@ -15,7 +15,7 @@ android {
         applicationId = "it.peppedess.ted"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
+        versionCode = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
         versionName = "0.1.0"
 
         // Iniettati dai GitHub Secrets in CI. Mai committare i valori.
@@ -29,8 +29,21 @@ android {
         }
     }
 
+    signingConfigs {
+        create("shared") {
+            // Chiave di sviluppo condivisa fra i moduli e fra le build.
+            // Senza, ogni run della CI firma con una debug.keystore diversa
+            // e l'APK non si installa sopra il precedente.
+            storeFile = rootProject.file("keystore/ted.jks")
+            storePassword = "tedtedted"
+            keyAlias = "ted"
+            keyPassword = "tedtedted"
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("shared")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -39,6 +52,7 @@ android {
             )
         }
         debug {
+            signingConfig = signingConfigs.getByName("shared")
             isMinifyEnabled = false
         }
     }

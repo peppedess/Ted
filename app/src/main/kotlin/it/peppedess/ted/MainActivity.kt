@@ -34,6 +34,7 @@ private fun PhoneRoot() {
     val context = LocalContext.current
     val client = remember { Td.get(context) }
     val stage by client.stage.collectAsState()
+    val bridgeRunning by TdService.running.collectAsState()
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -55,7 +56,9 @@ private fun PhoneRoot() {
         LoginScreen(
             client = client,
             stage = stage,
+            bridgeRunning = bridgeRunning,
             onReady = { TdService.start(context) },
+            onStop = { TdService.stop(context) },
             modifier = Modifier.padding(inner)
         )
     }

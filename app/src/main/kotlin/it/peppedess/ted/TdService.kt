@@ -11,6 +11,9 @@ import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import it.peppedess.ted.tdlib.Td
 import it.peppedess.ted.tdlib.TdClient
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -24,6 +27,7 @@ class TdService : LifecycleService() {
 
     override fun onCreate() {
         super.onCreate()
+        _running.value = true
         createChannel()
         startForeground(NOTIFICATION_ID, buildNotification("Avvio..."))
 
@@ -42,6 +46,11 @@ class TdService : LifecycleService() {
         }
     }
 
+    override fun onDestroy() {
+        _running.value = false
+        super.onDestroy()
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
         return START_STICKY
@@ -55,7 +64,7 @@ class TdService : LifecycleService() {
         val channel = NotificationChannel(
             CHANNEL_ID,
             "Ponte Telegram",
-            NotificationManager.IMPORTANCE_MIN
+            NotificationManager.IMPORTANCE_LOW
         ).apply {
             description = "Mantiene attiva la connessione verso l'orologio"
             setShowBadge(false)
@@ -69,12 +78,18 @@ class TdService : LifecycleService() {
             .setContentText(text)
             .setSmallIcon(android.R.drawable.stat_notify_sync)
             .setOngoing(true)
-            .setPriority(NotificationCompat.PRIORITY_MIN)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
             .setSilent(true)
             .build()
 
     companion object {
-        private const val CHANNEL_ID = "ted_bridge"
+        private val _running = MutableStateFlow(false)
+
+        /** Vero mentre il servizio e vivo. Serve alla UI per non mentire all'utente. */
+        val running: StateFlow<Boolean> = _running.asStateFlow()
+
+        // Canale nuovo: l'importanza di uno gia creato non si puo alzare.
+        private const val CHANNEL_ID = "ted_bridge_v2"
         private const val NOTIFICATION_ID = 1001
 
         fun start(context: Context) {
