@@ -38,6 +38,7 @@ fun LoginScreen(
     bridgeRunning: Boolean,
     alertsEnabled: Boolean,
     onAlertsChange: (Boolean) -> Unit,
+    onTestAlert: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
@@ -94,6 +95,7 @@ fun LoginScreen(
                 bridgeRunning = bridgeRunning,
                 alertsEnabled = alertsEnabled,
                 onAlertsChange = onAlertsChange,
+                onTestAlert = onTestAlert,
                 onContinue = onReady,
                 onStop = onStop,
                 onLogout = { submit { client.logOut() } }
@@ -220,6 +222,7 @@ private fun ReadyStep(
     bridgeRunning: Boolean,
     alertsEnabled: Boolean,
     onAlertsChange: (Boolean) -> Unit,
+    onTestAlert: () -> Unit,
     onContinue: () -> Unit,
     onStop: () -> Unit,
     onLogout: () -> Unit
@@ -259,6 +262,13 @@ private fun ReadyStep(
             )
         }
         Switch(checked = alertsEnabled, onCheckedChange = onAlertsChange)
+    }
+
+    TextButton(
+        onClick = onTestAlert,
+        modifier = Modifier.padding(top = 4.dp)
+    ) {
+        Text("Prova notifica")
     }
 
     TextButton(
