@@ -1,7 +1,12 @@
 package it.peppedess.ted.wear
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -19,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.material3.AppScaffold
@@ -41,15 +47,39 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { WearRoot() }
+        val initial = intent?.getLongExtra(EXTRA_CHAT_ID, 0L)?.takeIf { it != 0L }
+        setContent { WearRoot(initialChatId = initial) }
+    }
+
+    companion object {
+        const val EXTRA_CHAT_ID = "ted_chat_id"
     }
 }
 
 @Composable
-private fun WearRoot() {
+private fun WearRoot(initialChatId: Long? = null) {
     val context = LocalContext.current
     val bridge = remember { BridgeClient(context) }
     val navController = rememberSwipeDismissableNavController()
+
+    val notifPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { }
+
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val granted = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!granted) notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    // Aperta da una notifica: saltiamo dritti nella conversazione.
+    LaunchedEffect(initialChatId) {
+        if (initialChatId != null) navController.navigate("chat/$initialChatId")
+    }
 
     val now by produceState(initialValue = System.currentTimeMillis() / 1000) {
         while (true) {
