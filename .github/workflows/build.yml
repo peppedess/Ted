@@ -43,6 +43,17 @@ jobs:
           TG_API_HASH: ${{ secrets.TG_API_HASH }}
         run: ./gradlew :protocol:build :app:assembleDebug :wear:assembleDebug :wear:assembleRelease --stacktrace
 
+      - name: Errori di compilazione
+        if: failure()
+        run: |
+          {
+            echo "## Errori"
+            echo '```'
+            ./gradlew :app:compileDebugKotlin --console=plain 2>&1 \
+              | grep "^e: " | sed 's|.*/it/peppedess/ted/||' | head -40 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Diagnostica
         if: always()
         env:
