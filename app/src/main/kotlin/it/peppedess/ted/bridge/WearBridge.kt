@@ -3,7 +3,6 @@ package it.peppedess.ted.bridge
 import android.content.Context
 import android.util.Log
 import com.google.android.gms.wearable.Asset
-import com.google.android.gms.wearable.Asset
 import com.google.android.gms.wearable.CapabilityClient
 import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
