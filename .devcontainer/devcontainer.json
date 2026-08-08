@@ -1,0 +1,25 @@
+{
+  "name": "Ted",
+  "image": "mcr.microsoft.com/devcontainers/java:21-bookworm",
+  "postCreateCommand": "bash .devcontainer/setup-android.sh",
+  "remoteEnv": {
+    "ANDROID_HOME": "/home/vscode/android-sdk",
+    "PATH": "${containerEnv:PATH}:/home/vscode/android-sdk/platform-tools:/home/vscode/android-sdk/cmdline-tools/latest/bin"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "fwcd.kotlin",
+        "vscjava.vscode-gradle"
+      ],
+      "settings": {
+        "git.pager": "cat"
+      }
+    }
+  },
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "8gb",
+    "storage": "32gb"
+  }
+}
