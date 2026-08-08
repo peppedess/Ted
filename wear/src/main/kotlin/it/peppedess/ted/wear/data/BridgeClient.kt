@@ -12,6 +12,7 @@ import com.google.android.gms.wearable.PutDataRequest
 import com.google.android.gms.wearable.Wearable
 import it.peppedess.ted.protocol.BridgeStatus
 import it.peppedess.ted.protocol.ChatList
+import it.peppedess.ted.protocol.ChatThread
 import it.peppedess.ted.protocol.TedCodec
 import it.peppedess.ted.protocol.TedPaths
 import it.peppedess.ted.protocol.WatchCommand
@@ -37,6 +38,9 @@ class BridgeClient(context: Context) {
 
     fun chatList(): Flow<ChatList> =
         itemFlow(TedPaths.CHATS) { TedCodec.decodeOrNull<ChatList>(it) }
+
+    fun thread(chatId: Long): Flow<ChatThread> =
+        itemFlow(TedPaths.thread(chatId)) { TedCodec.decodeOrNull<ChatThread>(it) }
 
     fun status(): Flow<BridgeStatus> =
         itemFlow(TedPaths.STATUS) { TedCodec.decodeOrNull<BridgeStatus>(it) }

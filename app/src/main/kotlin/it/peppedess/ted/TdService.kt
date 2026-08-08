@@ -77,17 +77,34 @@ class TdService : LifecycleService() {
         }
 
         lifecycleScope.launch {
-            for (command in commands) handle(command)
+            for (command in commands) {
+                runCatching { handle(command) }
+                    .onFailure { android.util.Log.w("TdService", "comando fallito", it) }
+            }
         }
     }
 
-    private fun handle(command: WatchCommand) {
+    private suspend fun handle(command: WatchCommand) {
         when (command) {
             is WatchCommand.Wake -> repository.requestRefresh()
-            is WatchCommand.OpenChat -> Unit   // thread: prossima fase
-            is WatchCommand.SendText -> Unit   // invio: prossima fase
-            is WatchCommand.MarkRead -> Unit
-            is WatchCommand.RequestVoice -> Unit
+
+            is WatchCommand.OpenChat -> {
+                val thread = repository.loadThread(command.chatId, command.limit)
+                bridge.publishThread(thread)
+            }
+
+            is WatchCommand.SendText -> {
+                repository.sendText(command.chatId, command.text, command.replyTo)
+                // Ricarichiamo subito: cosi il messaggio appena inviato
+                // compare sull'orologio senza aspettare l'update di TDLib.
+                bridge.publishThread(repository.loadThread(command.chatId, 30))
+                repository.requestRefresh()
+            }
+
+            is WatchCommand.MarkRead -> repository.markRead(command.chatId, command.upTo)
+
+            is WatchCommand.RequestVoice -> Unit // riproduzione vocali: fase successiva
+
             is WatchCommand.Sleep -> stopSelf()
         }
     }

@@ -7,6 +7,7 @@ import com.google.android.gms.wearable.Wearable
 import it.peppedess.ted.protocol.BridgeState
 import it.peppedess.ted.protocol.BridgeStatus
 import it.peppedess.ted.protocol.ChatList
+import it.peppedess.ted.protocol.ChatThread
 import it.peppedess.ted.protocol.TedCodec
 import it.peppedess.ted.protocol.TedPaths
 import kotlinx.coroutines.tasks.await
@@ -21,6 +22,19 @@ class WearBridge(context: Context) {
         val payload = TedCodec.encode(trimmed)
         putItem(TedPaths.CHATS, payload, trimmed.revision)
         Log.d(TAG, "pubblicate ${trimmed.chats.size} chat, ${payload.size} byte")
+    }
+
+    suspend fun publishThread(thread: ChatThread) {
+        var current = thread
+        // Stesso tetto della lista chat: meglio meno messaggi che nessun invio.
+        while (current.messages.size > 5 &&
+            TedCodec.encode(current).size > TedPaths.MAX_PAYLOAD_BYTES
+        ) {
+            current = current.copy(messages = current.messages.drop(5))
+        }
+        val payload = TedCodec.encode(current)
+        putItem(TedPaths.thread(current.chatId), payload, current.revision)
+        Log.d(TAG, "pubblicati ${current.messages.size} messaggi, ${payload.size} byte")
     }
 
     suspend fun publishStatus(state: BridgeState, detail: String?, revision: Long) {

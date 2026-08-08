@@ -2,6 +2,8 @@ package it.peppedess.ted.bridge
 
 import android.util.Log
 import it.peppedess.ted.protocol.ChatList
+import it.peppedess.ted.protocol.ChatMessage
+import it.peppedess.ted.protocol.ChatThread
 import it.peppedess.ted.protocol.TedPaths
 import it.peppedess.ted.tdlib.TdClient
 import kotlinx.coroutines.CoroutineScope
@@ -99,6 +101,75 @@ class ChatRepository(
         revision += 1
         _chats.value = ChatList(summaries, revision)
         Log.d(TAG, "lista chat aggiornata: ${summaries.size} voci, rev $revision")
+    }
+
+    /**
+     * Carica la cronologia di una chat.
+     *
+     * Alla prima chiamata TDLib risponde spesso con pochi o zero messaggi,
+     * perche deve ancora tirarli giu dal server: per questo riproviamo.
+     */
+    suspend fun loadThread(chatId: Long, limit: Int): ChatThread {
+        val chat = td.send(TdApi.GetChat().apply { this.chatId = chatId })
+
+        var messages = fetchHistory(chatId, limit)
+        if (messages.isEmpty()) {
+            delay(700)
+            messages = fetchHistory(chatId, limit)
+        }
+
+        revision += 1
+        return ChatThread(
+            chatId = chatId,
+            title = chat.title.ifBlank { "Senza nome" },
+            // TDLib restituisce dal piu recente: sull'orologio li vogliamo cronologici.
+            messages = messages.reversed(),
+            revision = revision
+        )
+    }
+
+    private suspend fun fetchHistory(chatId: Long, limit: Int): List<ChatMessage> =
+        runCatching {
+            td.send(
+                TdApi.GetChatHistory().apply {
+                    this.chatId = chatId
+                    fromMessageId = 0
+                    offset = 0
+                    this.limit = limit
+                    onlyLocal = false
+                }
+            ).messages.mapNotNull { msg ->
+                msg?.let { MessageMapper.toMessage(it, users) }
+            }
+        }.getOrDefault(emptyList())
+
+    suspend fun sendText(targetChatId: Long, body: String, replyToId: Long?) {
+        val request = TdApi.SendMessage().apply {
+            chatId = targetChatId
+            inputMessageContent = TdApi.InputMessageText().apply {
+                text = TdApi.FormattedText().apply {
+                    this.text = body
+                    entities = emptyArray()
+                }
+            }
+            if (replyToId != null) {
+                replyTo = TdApi.InputMessageReplyToMessage().apply { messageId = replyToId }
+            }
+        }
+        td.send(request)
+        Log.d(TAG, "messaggio inviato a $targetChatId")
+    }
+
+    suspend fun markRead(targetChatId: Long, upTo: Long) {
+        runCatching {
+            td.send(
+                TdApi.ViewMessages().apply {
+                    chatId = targetChatId
+                    messageIds = longArrayOf(upTo)
+                    forceRead = true
+                }
+            )
+        }
     }
 
     companion object {
