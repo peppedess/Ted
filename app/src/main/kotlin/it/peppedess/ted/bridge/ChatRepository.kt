@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.drinkless.tdlib.TdApi
 import java.io.File
+import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -300,6 +301,7 @@ class ChatRepository(
 
     companion object {
         private const val TAG = "ChatRepository"
+        private const val MAX_PHOTOS = 12
         private const val MAX_PHOTOS = 12
     }
 }

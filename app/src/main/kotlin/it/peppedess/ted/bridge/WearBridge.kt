@@ -3,6 +3,7 @@ package it.peppedess.ted.bridge
 import android.content.Context
 import android.util.Log
 import com.google.android.gms.wearable.Asset
+import com.google.android.gms.wearable.Asset
 import com.google.android.gms.wearable.CapabilityClient
 import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
@@ -110,7 +111,17 @@ class WearBridge(context: Context) {
         Log.d(TAG, "vocale pubblicato: ${bytes.size} byte")
     }
 
+    suspend fun publishVoice(chatId: Long, messageId: Long, bytes: ByteArray) {
+        val request = PutDataMapRequest.create(TedPaths.voiceChannel(chatId, messageId)).apply {
+            dataMap.putAsset(KEY_VOICE, Asset.createFromBytes(bytes))
+            dataMap.putLong(TedPaths.KEY_REVISION, System.currentTimeMillis())
+        }.asPutDataRequest().setUrgent()
+        dataClient.putDataItem(request).await()
+        Log.d(TAG, "vocale pubblicato: ${bytes.size} byte")
+    }
+
     companion object {
+        const val KEY_VOICE = "voice"
         const val KEY_VOICE = "voice"
         private const val TAG = "WearBridge"
     }
