@@ -1,9 +1,3 @@
-# TDLib passa per JNI: i nomi non vanno offuscati o il ponte nativo si rompe.
--keep class org.drinkless.tdlib.** { *; }
--keepclassmembers class org.drinkless.tdlib.** { *; }
--keepclasseswithmembernames class * {
-    native <methods>;
-}
 
 # kotlinx.serialization: R8 rimuoverebbe i serializzatori generati,
 # e il guasto si vedrebbe solo in release, a runtime.

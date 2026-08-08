@@ -87,7 +87,7 @@ class ChatRepository(
                 chatList = TdApi.ChatListMain()
                 limit = TedPaths.CHAT_PAGE_SIZE
             }
-        ).chatIds
+        ).chatIds.toList()
 
         val summaries = ids.mapNotNull { id ->
             runCatching {
