@@ -20,6 +20,9 @@ android {
 
     buildTypes {
         release {
+            // Firmato con la chiave di debug: serve solo per installare e misurare,
+            // non per distribuire.
+            signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

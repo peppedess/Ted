@@ -41,12 +41,13 @@ fun ChatListScreen(
             verticalArrangement = Arrangement.spacedBy(4.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-            item {
-                ListHeader {
-                    Text("Chat")
-                }
+            item(key = "header") {
+                ListHeader { Text("Chat") }
             }
-            items(chats.size) { index ->
+            items(
+                count = chats.size,
+                key = { index -> chats[index].chatId }
+            ) { index ->
                 val chat = chats[index]
                 ChatRow(
                     chat = chat,
@@ -67,7 +68,10 @@ private fun ChatRow(
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors()
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        )
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(
@@ -80,13 +84,20 @@ private fun ChatRow(
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false)
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = relativeTime(chat.date, now),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    modifier = Modifier.padding(start = 4.dp)
                 )
                 if (chat.unread > 0) {
                     UnreadDot(
                         count = chat.unread,
                         muted = chat.muted,
-                        modifier = Modifier.padding(start = 6.dp)
+                        modifier = Modifier.padding(start = 4.dp)
                     )
                 }
             }
@@ -95,12 +106,8 @@ private fun ChatRow(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = relativeTime(chat.date, now),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 2.dp)
             )
         }
     }
@@ -124,13 +131,13 @@ private fun UnreadDot(
     }
     Box(
         modifier = modifier
-            .size(20.dp)
+            .size(18.dp)
             .clip(CircleShape)
             .background(background),
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = if (count > 99) "99" else count.toString(),
+            text = if (count > 9) "9+" else count.toString(),
             style = MaterialTheme.typography.labelSmall,
             color = foreground,
             maxLines = 1
@@ -143,9 +150,9 @@ internal fun relativeTime(epochSeconds: Long, now: Long): String {
     val delta = (now - epochSeconds).coerceAtLeast(0)
     return when {
         delta < 60 -> "ora"
-        delta < 3600 -> "${delta / 60} min"
-        delta < 86_400 -> "${delta / 3600} h"
-        delta < 7 * 86_400 -> "${delta / 86_400} g"
-        else -> "${delta / (7 * 86_400)} sett"
+        delta < 3600 -> "${delta / 60}m"
+        delta < 86_400 -> "${delta / 3600}h"
+        delta < 7 * 86_400 -> "${delta / 86_400}g"
+        else -> "${delta / (7 * 86_400)}sett"
     }
 }
