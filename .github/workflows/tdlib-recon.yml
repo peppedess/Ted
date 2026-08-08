@@ -1,0 +1,40 @@
+name: TDLib recon
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  recon:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout TDLib
+        uses: actions/checkout@v4
+        with:
+          repository: tdlib/td
+          ref: master
+          path: td
+
+      - name: Dump script di build
+        working-directory: td/example/android
+        run: |
+          {
+            echo "## File presenti"
+            echo '```'
+            ls -la
+            echo '```'
+            echo "## Righe con ABI / ARCH"
+            echo '```'
+            grep -nE 'arm64-v8a|armeabi-v7a|x86_64|ARCHS|ABIS|ANDROID_ABI|for ABI|for ARCH' *.sh Dockerfile 2>/dev/null || echo "(nessun match)"
+            echo '```'
+            for f in build-tdlib.sh build-openssl.sh Dockerfile; do
+              [ -f "$f" ] || continue
+              echo "## $f"
+              echo '```bash'
+              cat "$f"
+              echo '```'
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
