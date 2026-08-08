@@ -1,22 +1,26 @@
 package it.peppedess.ted
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import it.peppedess.ted.tdlib.TdLibProbe
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
+import it.peppedess.ted.tdlib.Td
+import it.peppedess.ted.ui.LoginScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -27,31 +31,32 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun PhoneRoot() {
-    val probe = remember { TdLibProbe.run() }
-    Scaffold { inner ->
-        Column(
-            modifier = Modifier.fillMaxSize().padding(inner).padding(24.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text("Ted", style = MaterialTheme.typography.headlineLarge)
-            Text(
-                text = if (probe.ok) probe.detail else "Caricamento fallito",
-                style = MaterialTheme.typography.titleMedium,
-                color = if (probe.ok) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.error
-                }
-            )
-            if (!probe.ok) {
-                Text(
-                    text = probe.detail,
-                    style = MaterialTheme.typography.bodySmall,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
+    val context = LocalContext.current
+    val client = remember { Td.get(context) }
+    val stage by client.stage.collectAsState()
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* l'esito non blocca nulla: senza notifica il servizio parte comunque */ }
+
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val granted = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!granted) {
+                permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
+    }
+
+    Scaffold { inner ->
+        LoginScreen(
+            client = client,
+            stage = stage,
+            onReady = { TdService.start(context) },
+            modifier = Modifier.padding(inner)
+        )
     }
 }
