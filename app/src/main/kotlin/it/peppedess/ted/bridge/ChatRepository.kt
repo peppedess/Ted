@@ -129,11 +129,7 @@ class ChatRepository(
     suspend fun loadThread(chatId: Long, limit: Int): ChatThread {
         val chat = td.send(TdApi.GetChat().apply { this.chatId = chatId })
 
-        var messages = fetchHistory(chatId, limit)
-        if (messages.isEmpty()) {
-            delay(700)
-            messages = fetchHistory(chatId, limit)
-        }
+        val messages = fetchHistory(chatId, limit)
 
         revision += 1
         return ChatThread(
@@ -145,20 +141,46 @@ class ChatRepository(
         )
     }
 
-    private suspend fun fetchHistory(chatId: Long, limit: Int): List<ChatMessage> =
-        runCatching {
-            td.send(
-                TdApi.GetChatHistory().apply {
-                    this.chatId = chatId
-                    fromMessageId = 0
-                    offset = 0
-                    this.limit = limit
-                    onlyLocal = false
+    /**
+     * TDLib con fromMessageId = 0 restituisce solo l'ultimo messaggio:
+     * per risalire la cronologia va richiamato a catena, passando ogni volta
+     * l'id del piu vecchio ricevuto. Da qui il ciclo.
+     */
+    private suspend fun fetchHistory(chatId: Long, target: Int): List<ChatMessage> {
+        val collected = mutableListOf<TdApi.Message>()
+        var fromId = 0L
+        var attempts = 0
+
+        while (collected.size < target && attempts < 12) {
+            attempts++
+            val batch = runCatching {
+                td.send(
+                    TdApi.GetChatHistory().apply {
+                        this.chatId = chatId
+                        fromMessageId = fromId
+                        offset = 0
+                        limit = (target - collected.size).coerceAtLeast(1)
+                        onlyLocal = false
+                    }
+                ).messages.filterNotNull()
+            }.getOrNull() ?: break
+
+            if (batch.isEmpty()) {
+                // Alla prima chiamata la cronologia puo non essere ancora
+                // scesa dal server: diamo tempo e riproviamo una volta.
+                if (collected.isEmpty() && attempts <= 2) {
+                    delay(600)
+                    continue
                 }
-            ).messages.mapNotNull { msg ->
-                msg?.let { MessageMapper.toMessage(it, users) }
+                break
             }
-        }.getOrDefault(emptyList())
+
+            collected += batch
+            fromId = collected.last().id
+        }
+
+        return collected.map { MessageMapper.toMessage(it, users) }
+    }
 
     suspend fun sendText(targetChatId: Long, body: String, replyToId: Long?) {
         val request = TdApi.SendMessage().apply {

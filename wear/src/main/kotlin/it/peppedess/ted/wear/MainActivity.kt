@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -157,8 +158,12 @@ private fun ThreadRoute(
     val threadFlow = remember(bridge, chatId) { bridge.thread(chatId) }
     val thread by threadFlow.collectAsState(initial = null)
 
-    LaunchedEffect(chatId) {
-        runCatching { bridge.send(WatchCommand.OpenChat(chatId)) }
+    // Cresce a scatti quando l'utente chiede altri messaggi. Il tetto e dettato
+    // dai 100 KB del DataItem, non da una scelta di comodo.
+    var limit by remember(chatId) { mutableIntStateOf(30) }
+
+    LaunchedEffect(chatId, limit) {
+        runCatching { bridge.send(WatchCommand.OpenChat(chatId, limit)) }
     }
 
     // Marchiamo come letto solo quando i messaggi sono davvero arrivati.
@@ -175,6 +180,8 @@ private fun ThreadRoute(
             title = current.title,
             messages = current.messages,
             now = now,
+            canLoadMore = current.messages.size >= limit && limit < MAX_MESSAGES,
+            onLoadMore = { limit = (limit + 40).coerceAtMost(MAX_MESSAGES) },
             onSend = { text ->
                 scope.launch {
                     runCatching { bridge.send(WatchCommand.SendText(chatId, text)) }
@@ -183,6 +190,9 @@ private fun ThreadRoute(
         )
     }
 }
+
+/** Oltre questa soglia il thread non entra piu in un singolo DataItem. */
+private const val MAX_MESSAGES = 200
 
 private fun placeholderText(
     hasList: Boolean,

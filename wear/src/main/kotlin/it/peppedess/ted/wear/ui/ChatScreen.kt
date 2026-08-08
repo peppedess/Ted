@@ -38,6 +38,8 @@ fun ChatScreen(
     title: String,
     messages: List<ChatMessage>,
     now: Long,
+    canLoadMore: Boolean,
+    onLoadMore: () -> Unit,
     onSend: (String) -> Unit
 ) {
     val listState = rememberTransformingLazyColumnState()
@@ -62,6 +64,17 @@ fun ChatScreen(
         ) {
             item(key = "header") {
                 ListHeader { Text(title, maxLines = 1) }
+            }
+
+            if (canLoadMore) {
+                item(key = "more") {
+                    CompactButton(
+                        onClick = onLoadMore,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Carica altri", maxLines = 1)
+                    }
+                }
             }
 
             if (messages.isEmpty()) {
