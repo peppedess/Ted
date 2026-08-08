@@ -39,6 +39,7 @@ class WearBridge(context: Context) {
         ) {
             current = current.copy(messages = current.messages.drop(5))
         }
+
         val payload = TedCodec.encode(current)
         // Gli Asset viaggiano su un canale separato: non contano nei 100 KB.
         val request = PutDataMapRequest.create(TedPaths.thread(current.chatId)).apply {
@@ -49,12 +50,36 @@ class WearBridge(context: Context) {
             }
         }.asPutDataRequest().setUrgent()
         dataClient.putDataItem(request).await()
-        Log.d(TAG, "pubblicati ${current.messages.size} messaggi, ${payload.size} byte, ${assets.size} asset")
+        Log.d(
+            TAG,
+            "pubblicati ${current.messages.size} messaggi, " +
+                "${payload.size} byte, ${assets.size} asset"
+        )
+    }
+
+    suspend fun publishVoice(chatId: Long, messageId: Long, bytes: ByteArray) {
+        val request = PutDataMapRequest.create(TedPaths.voiceChannel(chatId, messageId)).apply {
+            dataMap.putAsset(TedPaths.KEY_VOICE, Asset.createFromBytes(bytes))
+            dataMap.putLong(TedPaths.KEY_REVISION, System.currentTimeMillis())
+        }.asPutDataRequest().setUrgent()
+        dataClient.putDataItem(request).await()
+        Log.d(TAG, "vocale pubblicato: ${bytes.size} byte")
     }
 
     suspend fun publishStatus(state: BridgeState, detail: String?, revision: Long) {
         val payload = TedCodec.encode(BridgeStatus(state, detail, revision))
         putItem(TedPaths.STATUS, payload, revision)
+    }
+
+    /**
+     * Gli avvisi passano da MessageClient e non da DataClient: un messaggio
+     * nuovo e un evento, non uno stato, e non deve sopravvivere allo spegnimento.
+     */
+    suspend fun sendAlert(alert: MessageAlert) {
+        val payload = TedCodec.encode(alert)
+        watchNodes().forEach { nodeId ->
+            runCatching { messageClient.sendMessage(nodeId, TedPaths.ALERT, payload).await() }
+        }
     }
 
     private suspend fun putItem(path: String, payload: ByteArray, revision: Long) {
@@ -63,6 +88,17 @@ class WearBridge(context: Context) {
             dataMap.putLong(TedPaths.KEY_REVISION, revision)
         }.asPutDataRequest().setUrgent()
         dataClient.putDataItem(request).await()
+    }
+
+    private suspend fun watchNodes(): List<String> {
+        val byCapability = runCatching {
+            capabilityClient
+                .getCapability(TedPaths.CAPABILITY_WATCH, CapabilityClient.FILTER_REACHABLE)
+                .await().nodes.map { it.id }
+        }.getOrDefault(emptyList())
+        if (byCapability.isNotEmpty()) return byCapability
+        return runCatching { nodeClient.connectedNodes.await().map { it.id } }
+            .getOrDefault(emptyList())
     }
 
     /**
@@ -77,37 +113,6 @@ class WearBridge(context: Context) {
             current = current.copy(chats = current.chats.dropLast(3))
         }
         return current
-    }
-
-    /**
-     * Gli avvisi passano da MessageClient e non da DataClient: un messaggio
-     * nuovo e un evento, non uno stato, e non deve sopravvivere allo spegnimento.
-     */
-    suspend fun sendAlert(alert: MessageAlert) {
-        val payload = TedCodec.encode(alert)
-        watchNodes().forEach { nodeId ->
-            runCatching { messageClient.sendMessage(nodeId, TedPaths.ALERT, payload).await() }
-        }
-    }
-
-    private suspend fun watchNodes(): List<String> {
-        val byCapability = runCatching {
-            capabilityClient
-                .getCapability(TedPaths.CAPABILITY_WATCH, CapabilityClient.FILTER_REACHABLE)
-                .await().nodes.map { it.id }
-        }.getOrDefault(emptyList())
-        if (byCapability.isNotEmpty()) return byCapability
-        return runCatching { nodeClient.connectedNodes.await().map { it.id } }
-            .getOrDefault(emptyList())
-    }
-
-    suspend fun publishVoice(chatId: Long, messageId: Long, bytes: ByteArray) {
-        val request = PutDataMapRequest.create(TedPaths.voiceChannel(chatId, messageId)).apply {
-            dataMap.putAsset(TedPaths.KEY_VOICE, Asset.createFromBytes(bytes))
-            dataMap.putLong(TedPaths.KEY_REVISION, System.currentTimeMillis())
-        }.asPutDataRequest().setUrgent()
-        dataClient.putDataItem(request).await()
-        Log.d(TAG, "vocale pubblicato: ${bytes.size} byte")
     }
 
     companion object {
