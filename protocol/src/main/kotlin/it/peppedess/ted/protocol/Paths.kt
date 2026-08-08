@@ -33,6 +33,7 @@ object TedPaths {
     // --- Chiavi dentro il DataMap ---
     const val KEY_PAYLOAD = "p"
     const val KEY_REVISION = "r"
+    const val KEY_VOICE = "voice"
 
     // --- Capability dichiarate in wear.xml ---
     const val CAPABILITY_PHONE = "ted_phone"

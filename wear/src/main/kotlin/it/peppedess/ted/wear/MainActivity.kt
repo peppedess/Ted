@@ -3,6 +3,7 @@ package it.peppedess.ted.wear
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
+import android.graphics.BitmapFactory
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -24,6 +26,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.compose.ui.text.style.TextAlign
@@ -39,10 +42,13 @@ import androidx.wear.compose.navigation.rememberSwipeDismissableNavController
 import it.peppedess.ted.protocol.BridgeState
 import it.peppedess.ted.protocol.WatchCommand
 import it.peppedess.ted.wear.data.BridgeClient
+import it.peppedess.ted.wear.data.VoicePlayer
 import it.peppedess.ted.wear.ui.ChatListScreen
 import it.peppedess.ted.wear.ui.ChatScreen
 import it.peppedess.ted.wear.ui.TedTheme
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -154,6 +160,7 @@ private fun ThreadRoute(
     chatId: Long,
     now: Long
 ) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val threadFlow = remember(bridge, chatId) { bridge.thread(chatId) }
     val thread by threadFlow.collectAsState(initial = null)
@@ -167,20 +174,49 @@ private fun ThreadRoute(
     }
 
     // Marchiamo come letto solo quando i messaggi sono davvero arrivati.
-    LaunchedEffect(thread?.revision) {
-        val last = thread?.messages?.lastOrNull() ?: return@LaunchedEffect
+    LaunchedEffect(thread?.thread?.revision) {
+        val last = thread?.thread?.messages?.lastOrNull() ?: return@LaunchedEffect
         runCatching { bridge.send(WatchCommand.MarkRead(chatId, last.messageId)) }
+    }
+
+    // Il vocale non scende da solo: lo chiediamo al tocco e aspettiamo l'Asset.
+    var pendingVoice by remember { mutableStateOf<Long?>(null) }
+
+    LaunchedEffect(pendingVoice) {
+        val messageId = pendingVoice ?: return@LaunchedEffect
+        runCatching { bridge.send(WatchCommand.RequestVoice(chatId, messageId)) }
+        val asset = withTimeoutOrNull(25_000) { bridge.voice(chatId, messageId).first() }
+        val bytes = asset?.let { bridge.loadAsset(it) }
+        if (bytes != null) {
+            VoicePlayer.play(context, bytes) { pendingVoice = null }
+        } else {
+            pendingVoice = null
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose { VoicePlayer.stopPlayback() }
     }
 
     val current = thread
     if (current == null) {
         Placeholder("Caricamento...", spinning = true)
     } else {
+        val assets = current.assets
         ChatScreen(
-            title = current.title,
-            messages = current.messages,
+            title = current.thread.title,
+            messages = current.thread.messages,
             now = now,
-            canLoadMore = current.messages.size >= limit && limit < MAX_MESSAGES,
+            loadImage = { key ->
+                assets[key]
+                    ?.let { bridge.loadAsset(it) }
+                    ?.let { bytes ->
+                        BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
+                    }
+            },
+            onPlayVoice = { messageId -> pendingVoice = messageId },
+            playingId = pendingVoice,
+            canLoadMore = current.thread.messages.size >= limit && limit < MAX_MESSAGES,
             onLoadMore = { limit = (limit + 40).coerceAtMost(MAX_MESSAGES) },
             onSend = { text ->
                 scope.launch {

@@ -3,10 +3,16 @@ package it.peppedess.ted.wear.data
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import com.google.android.gms.wearable.Asset
+import com.google.android.gms.wearable.Asset
+import com.google.android.gms.wearable.Asset
 import com.google.android.gms.wearable.CapabilityClient
 import com.google.android.gms.wearable.DataClient
 import com.google.android.gms.wearable.DataEvent
 import com.google.android.gms.wearable.DataItem
+import com.google.android.gms.wearable.DataMap
+import com.google.android.gms.wearable.DataMap
+import com.google.android.gms.wearable.DataMap
 import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.PutDataRequest
 import com.google.android.gms.wearable.Wearable
@@ -39,13 +45,36 @@ class BridgeClient(context: Context) {
     fun chatList(): Flow<ChatList> =
         itemFlow(TedPaths.CHATS) { TedCodec.decodeOrNull<ChatList>(it) }
 
-    fun thread(chatId: Long): Flow<ChatThread> =
-        itemFlow(TedPaths.thread(chatId)) { TedCodec.decodeOrNull<ChatThread>(it) }
+    /** Thread piu gli Asset allegati, indicizzati per chiave. */
+    data class ThreadData(val thread: ChatThread, val assets: Map<String, Asset>)
+
+    fun thread(chatId: Long): Flow<ThreadData> =
+        mapFlow(TedPaths.thread(chatId)) { map ->
+            val payload = map.getByteArray(TedPaths.KEY_PAYLOAD) ?: return@mapFlow null
+            val decoded = TedCodec.decodeOrNull<ChatThread>(payload) ?: return@mapFlow null
+            val assets = map.keySet()
+                .filter { it != TedPaths.KEY_PAYLOAD && it != TedPaths.KEY_REVISION }
+                .mapNotNull { key -> map.getAsset(key)?.let { key to it } }
+                .toMap()
+            ThreadData(decoded, assets)
+        }
+
+    fun voice(chatId: Long, messageId: Long): Flow<Asset> =
+        mapFlow(TedPaths.voiceChannel(chatId, messageId)) { map ->
+            map.getAsset(TedPaths.KEY_VOICE)
+        }
+
+    suspend fun loadAsset(asset: Asset): ByteArray? = runCatching {
+        dataClient.getFdForAsset(asset).await().inputStream?.use { it.readBytes() }
+    }.getOrNull()
 
     fun status(): Flow<BridgeStatus> =
         itemFlow(TedPaths.STATUS) { TedCodec.decodeOrNull<BridgeStatus>(it) }
 
-    private fun <T> itemFlow(path: String, decode: (ByteArray) -> T?): Flow<T> = callbackFlow {
+    private fun <T> itemFlow(path: String, decode: (ByteArray) -> T?): Flow<T> =
+        mapFlow(path) { map -> map.getByteArray(TedPaths.KEY_PAYLOAD)?.let(decode) }
+
+    private fun <T> mapFlow(path: String, decode: (DataMap) -> T?): Flow<T> = callbackFlow {
         val uri = Uri.Builder()
             .scheme(PutDataRequest.WEAR_URI_SCHEME)
             .path(path)
@@ -55,8 +84,8 @@ class BridgeClient(context: Context) {
             for (event in events) {
                 if (event.type != DataEvent.TYPE_CHANGED) continue
                 if (event.dataItem.uri.path != path) continue
-                payloadOf(event.dataItem)?.let { bytes ->
-                    decode(bytes)?.let { trySend(it) }
+                mapOf(event.dataItem)?.let { map ->
+                    decode(map)?.let { trySend(it) }
                 }
             }
         }
@@ -67,7 +96,7 @@ class BridgeClient(context: Context) {
             val buffer = dataClient.getDataItems(uri).await()
             try {
                 buffer.firstOrNull()
-                    ?.let { payloadOf(it) }
+                    ?.let { mapOf(it) }
                     ?.let { decode(it) }
                     ?.let { trySend(it) }
             } finally {
@@ -78,8 +107,8 @@ class BridgeClient(context: Context) {
         awaitClose { dataClient.removeListener(listener) }
     }
 
-    private fun payloadOf(item: DataItem): ByteArray? = runCatching {
-        DataMapItem.fromDataItem(item).dataMap.getByteArray(TedPaths.KEY_PAYLOAD)
+    private fun mapOf(item: DataItem): DataMap? = runCatching {
+        DataMapItem.fromDataItem(item).dataMap
     }.getOrNull()
 
     suspend fun send(command: WatchCommand) {

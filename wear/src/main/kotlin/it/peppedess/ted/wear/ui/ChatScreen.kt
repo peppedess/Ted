@@ -3,6 +3,7 @@ package it.peppedess.ted.wear.ui
 import android.app.RemoteInput
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,9 +13,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
@@ -40,7 +46,10 @@ fun ChatScreen(
     now: Long,
     canLoadMore: Boolean,
     onLoadMore: () -> Unit,
-    onSend: (String) -> Unit
+    onSend: (String) -> Unit,
+    loadImage: suspend (String) -> ImageBitmap?,
+    onPlayVoice: (Long) -> Unit,
+    playingId: Long?
 ) {
     val listState = rememberTransformingLazyColumnState()
 
@@ -91,7 +100,13 @@ fun ChatScreen(
                 count = messages.size,
                 key = { index -> messages[index].messageId }
             ) { index ->
-                MessageBubble(message = messages[index], now = now)
+                MessageBubble(
+                    message = messages[index],
+                    now = now,
+                    loadImage = loadImage,
+                    onPlayVoice = onPlayVoice,
+                    playingId = playingId
+                )
             }
 
             item(key = "reply") {
@@ -159,7 +174,13 @@ private fun QuickReplies(onSend: (String) -> Unit) {
 }
 
 @Composable
-private fun MessageBubble(message: ChatMessage, now: Long) {
+private fun MessageBubble(
+    message: ChatMessage,
+    now: Long,
+    loadImage: suspend (String) -> ImageBitmap?,
+    onPlayVoice: (Long) -> Unit,
+    playingId: Long?
+) {
     val outgoing = message.outgoing
     val background = if (outgoing) {
         MaterialTheme.colorScheme.primaryContainer
@@ -192,10 +213,12 @@ private fun MessageBubble(message: ChatMessage, now: Long) {
                         maxLines = 1
                     )
                 }
-                Text(
-                    text = bodyText(message.content),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = foreground
+                BubbleContent(
+                    message = message,
+                    color = foreground,
+                    loadImage = loadImage,
+                    onPlayVoice = onPlayVoice,
+                    playingId = playingId
                 )
             }
         }
@@ -208,10 +231,77 @@ private fun MessageBubble(message: ChatMessage, now: Long) {
     }
 }
 
-private fun bodyText(content: MessageContent): String = when (content) {
-    is MessageContent.Text -> content.text
-    is MessageContent.Voice -> "Vocale ${content.seconds}s"
-    is MessageContent.Sticker -> content.emoji
-    is MessageContent.Photo -> content.caption.ifBlank { "Foto" }
-    is MessageContent.Unsupported -> content.label
+@Composable
+private fun BubbleContent(
+    message: ChatMessage,
+    color: Color,
+    loadImage: suspend (String) -> ImageBitmap?,
+    onPlayVoice: (Long) -> Unit,
+    playingId: Long?
+) {
+    when (val content = message.content) {
+        is MessageContent.Text -> Text(
+            text = content.text,
+            style = MaterialTheme.typography.bodySmall,
+            color = color
+        )
+
+        is MessageContent.Photo -> {
+            val bitmap by produceState<ImageBitmap?>(null, content.asset) {
+                value = loadImage(content.asset)
+            }
+            val image = bitmap
+            if (image != null) {
+                Image(
+                    bitmap = image,
+                    contentDescription = content.caption.ifBlank { "Foto" },
+                    contentScale = ContentScale.FillWidth,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                )
+            } else {
+                Text(
+                    text = "Foto...",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = color
+                )
+            }
+            if (content.caption.isNotBlank()) {
+                Text(
+                    text = content.caption,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = color,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+        }
+
+        is MessageContent.Voice -> {
+            val loading = playingId == message.messageId
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CompactButton(onClick = { onPlayVoice(message.messageId) }) {
+                    Text(if (loading) "..." else "Ascolta", maxLines = 1)
+                }
+                Text(
+                    text = "${content.seconds}s",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = color,
+                    modifier = Modifier.padding(start = 6.dp)
+                )
+            }
+        }
+
+        is MessageContent.Sticker -> Text(
+            text = content.emoji,
+            style = MaterialTheme.typography.titleMedium,
+            color = color
+        )
+
+        is MessageContent.Unsupported -> Text(
+            text = content.label,
+            style = MaterialTheme.typography.bodySmall,
+            color = color
+        )
+    }
 }
