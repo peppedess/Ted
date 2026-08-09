@@ -3,7 +3,6 @@ package it.peppedess.ted.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
@@ -12,7 +11,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.Switch
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -33,13 +31,11 @@ import kotlinx.coroutines.launch
 fun LoginScreen(
     client: TdClient,
     stage: TdClient.Stage,
+    bridgeRunning: Boolean,
     onReady: () -> Unit,
     onStop: () -> Unit,
-    bridgeRunning: Boolean,
-    alertsEnabled: Boolean,
-    onAlertsChange: (Boolean) -> Unit,
-    onTestAlert: () -> Unit,
     onOpenSettings: () -> Unit,
+    onTestAlert: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
@@ -50,8 +46,7 @@ fun LoginScreen(
         busy = true
         error = null
         scope.launch {
-            runCatching { block() }
-                .onFailure { error = it.message }
+            runCatching { block() }.onFailure { error = it.message }
             busy = false
         }
     }
@@ -94,12 +89,10 @@ fun LoginScreen(
 
             is TdClient.Stage.Ready -> ReadyStep(
                 bridgeRunning = bridgeRunning,
-                alertsEnabled = alertsEnabled,
-                onAlertsChange = onAlertsChange,
-                onTestAlert = onTestAlert,
-                onOpenSettings = onOpenSettings,
                 onContinue = onReady,
                 onStop = onStop,
+                onOpenSettings = onOpenSettings,
+                onTestAlert = onTestAlert,
                 onLogout = { submit { client.logOut() } }
             )
 
@@ -222,11 +215,10 @@ private fun PasswordStep(hint: String, busy: Boolean, onSubmit: (String) -> Unit
 @Composable
 private fun ReadyStep(
     bridgeRunning: Boolean,
-    alertsEnabled: Boolean,
-    onAlertsChange: (Boolean) -> Unit,
-    onTestAlert: () -> Unit,
     onContinue: () -> Unit,
     onStop: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onTestAlert: () -> Unit,
     onLogout: () -> Unit
 ) {
     Text(
@@ -249,41 +241,16 @@ private fun ReadyStep(
     ) {
         Text(if (bridgeRunning) "Ferma il ponte" else "Avvia il ponte")
     }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 20.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text("Notifiche sull'orologio", style = MaterialTheme.typography.bodyMedium)
-            Text(
-                "Tiene il ponte sempre acceso: consuma piu batteria.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        Switch(checked = alertsEnabled, onCheckedChange = onAlertsChange)
-    }
-
     TextButton(
         onClick = onOpenSettings,
         modifier = Modifier.padding(top = 8.dp)
     ) {
         Text("Impostazioni")
     }
-
-    TextButton(
-        onClick = onTestAlert,
-        modifier = Modifier.padding(top = 4.dp)
-    ) {
+    TextButton(onClick = onTestAlert) {
         Text("Prova notifica")
     }
-
-    TextButton(
-        onClick = onLogout,
-        modifier = Modifier.padding(top = 8.dp)
-    ) {
+    TextButton(onClick = onLogout) {
         Text("Disconnetti")
     }
 }

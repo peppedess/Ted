@@ -8,6 +8,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -16,12 +17,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValueCoroutineScope
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import it.peppedess.ted.bridge.WearBridge
@@ -35,28 +33,31 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { TedPhoneTheme(dark = isSystemInDarkTheme()) { PhoneRoot() } }
+        setContent {
+            TedPhoneTheme(dark = isSystemInDarkTheme()) { PhoneRoot() }
+        }
     }
 }
 
 @Composable
 private fun PhoneRoot() {
     val context = LocalContext.current
-    val client = remember { Td.get(context) }
     val scope = rememberCoroutineScope()
+    val client = remember { Td.get(context) }
     val bridge = remember { WearBridge(context) }
+
     val stage by client.stage.collectAsState()
     val bridgeRunning by TdService.running.collectAsState()
     val prefs by Settings.prefs.collectAsState()
-    var showSettings by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) { Settings.load(context) }
+    var showSettings by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { /* l'esito non blocca nulla: senza notifica il servizio parte comunque */ }
 
     LaunchedEffect(Unit) {
+        Settings.load(context)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val granted = ContextCompat.checkSelfPermission(
                 context,
@@ -74,40 +75,40 @@ private fun PhoneRoot() {
                 prefs = prefs,
                 onChange = { transform ->
                     Settings.update(context, transform)
-                    scope.launch { runCatching { bridge.publishPrefs(Settings.prefs.value) } }
+                    scope.launch {
+                        runCatching { bridge.publishPrefs(Settings.prefs.value) }
+                    }
                 },
                 onBack = { showSettings = false },
                 modifier = Modifier.padding(inner)
             )
-            return@Scaffold
-        }
-        LoginScreen(
-            client = client,
-            stage = stage,
-            bridgeRunning = bridgeRunning,
-            alertsEnabled = prefs.alerts,
-            onAlertsChange = { value -> Settings.update(context) { p -> p.copy(alerts = value) } },
-            onOpenSettings = { showSettings = true },
-            onTestAlert = {
-                // Salta TDLib e l'interruttore: prova solo trasporto e notifica.
-                scope.launch {
-                    runCatching {
-                        bridge.sendAlert(
-                            MessageAlert(
-                                chatId = 1L,
-                                chatTitle = "Prova",
-                                sender = "Ted",
-                                preview = "Se leggi questo, il ponte funziona",
-                                messageId = System.currentTimeMillis(),
-                                date = System.currentTimeMillis() / 1000
+        } else {
+            LoginScreen(
+                client = client,
+                stage = stage,
+                bridgeRunning = bridgeRunning,
+                onReady = { TdService.start(context) },
+                onStop = { TdService.stop(context) },
+                onOpenSettings = { showSettings = true },
+                onTestAlert = {
+                    // Salta TDLib e l'interruttore: prova solo trasporto e notifica.
+                    scope.launch {
+                        runCatching {
+                            bridge.sendAlert(
+                                MessageAlert(
+                                    chatId = 1L,
+                                    chatTitle = "Prova",
+                                    sender = "Ted",
+                                    preview = "Se leggi questo, il ponte funziona",
+                                    messageId = System.currentTimeMillis(),
+                                    date = System.currentTimeMillis() / 1000
+                                )
                             )
-                        )
+                        }
                     }
-                }
-            },
-            onReady = { TdService.start(context) },
-            onStop = { TdService.stop(context) },
-            modifier = Modifier.padding(inner)
-        )
+                },
+                modifier = Modifier.padding(inner)
+            )
+        }
     }
 }
