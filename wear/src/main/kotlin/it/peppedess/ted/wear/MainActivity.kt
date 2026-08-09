@@ -163,7 +163,8 @@ private fun WearRoot(initialChatId: Long? = null) {
 private fun ChatsRoute(
     bridge: BridgeClient,
     now: Long,
-    onChatClick: (Long) -> Unit
+    onChatClick: (Long) -> Unit,
+    onNewChat: () -> Unit
 ) {
     val chatsFlow = remember(bridge) { bridge.chatList() }
     val statusFlow = remember(bridge) { bridge.status() }
@@ -179,7 +180,12 @@ private fun ChatsRoute(
 
     val chats = chatList?.chats
     if (chats != null && chats.isNotEmpty()) {
-        ChatListScreen(chats = chats, now = now, onChatClick = onChatClick)
+        ChatListScreen(
+            chats = chats,
+            now = now,
+            onChatClick = onChatClick,
+            onNewChat = onNewChat
+        )
     } else {
         Placeholder(
             message = placeholderText(
