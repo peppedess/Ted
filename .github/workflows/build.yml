@@ -10,6 +10,9 @@ concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -73,6 +76,29 @@ jobs:
             else
               echo "Credenziali Telegram: **assenti** (i secret non sono stati letti)"
             fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Pubblica release
+        if: success() && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          TAG="v0.1.${GITHUB_RUN_NUMBER}"
+          mkdir -p release
+          cp app/build/outputs/apk/debug/*.apk release/ted-phone.apk
+          cp wear/build/outputs/apk/release/*.apk release/ted-wear.apk
+          gh release create "$TAG" release/ted-phone.apk release/ted-wear.apk \
+            --title "Ted $TAG" \
+            --notes "Build automatica da ${GITHUB_SHA:0:7}" \
+            --latest
+          {
+            echo "## Release $TAG"
+            echo ""
+            echo "Link fissi, sempre all'ultima build:"
+            echo ""
+            echo "- Orologio: ${{ github.server_url }}/${{ github.repository }}/releases/latest/download/ted-wear.apk"
+            echo "- Telefono: ${{ github.server_url }}/${{ github.repository }}/releases/latest/download/ted-phone.apk"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: APK telefono
