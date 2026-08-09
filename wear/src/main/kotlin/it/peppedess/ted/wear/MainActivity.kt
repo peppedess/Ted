@@ -178,11 +178,19 @@ private fun ChatsRoute(
             .onFailure { wakeError = it.message }
     }
 
-    val chats = chatList?.chats
+    val chats = chatList?.list?.chats
     if (chats != null && chats.isNotEmpty()) {
+        val assets = chatList?.assets.orEmpty()
         ChatListScreen(
             chats = chats,
             now = now,
+            loadAvatar = { key ->
+                assets[key]
+                    ?.let { bridge.loadAsset(it) }
+                    ?.let { bytes ->
+                        BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
+                    }
+            },
             onChatClick = onChatClick,
             onNewChat = onNewChat
         )

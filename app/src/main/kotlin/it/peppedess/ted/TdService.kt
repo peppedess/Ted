@@ -79,7 +79,7 @@ class TdService : LifecycleService() {
         lifecycleScope.launch {
             repository.chats.collectLatest { list ->
                 if (list.chats.isEmpty()) return@collectLatest
-                runCatching { bridge.publishChats(list) }
+                runCatching { bridge.publishChats(list, repository.avatars()) }
             }
         }
 

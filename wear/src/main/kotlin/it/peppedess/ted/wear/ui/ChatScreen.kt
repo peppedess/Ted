@@ -26,6 +26,11 @@ import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.Button
+import androidx.wear.compose.material3.EdgeButton
+import androidx.wear.compose.material3.EdgeButtonSize
+import androidx.wear.compose.material3.SurfaceTransformation
+import androidx.wear.compose.material3.lazy.rememberTransformationSpec
+import androidx.wear.compose.material3.lazy.transformedHeight
 import androidx.wear.compose.material3.CompactButton
 import androidx.wear.compose.material3.ListHeader
 import androidx.wear.compose.material3.MaterialTheme
@@ -55,6 +60,7 @@ fun ChatScreen(
 ) {
     val listState = rememberTransformingLazyColumnState()
     val spacing = LocalTedSpacing.current
+    val transformationSpec = rememberTransformationSpec()
 
     // Su una chat si guarda il fondo, non l'inizio. anchorKey vale 0 dopo un
     // "Carica altri", cosi non strappiamo via lo scroll a chi sta leggendo indietro.
@@ -75,7 +81,17 @@ fun ChatScreen(
         if (!text.isNullOrEmpty()) onSend(text)
     }
 
-    ScreenScaffold(scrollState = listState) { contentPadding ->
+    ScreenScaffold(
+        scrollState = listState,
+        edgeButton = {
+            EdgeButton(
+                onClick = { inputLauncher.launch(buildInputIntent()) },
+                buttonSize = EdgeButtonSize.Large
+            ) {
+                Text("Rispondi", maxLines = 1)
+            }
+        }
+    ) { contentPadding ->
         TransformingLazyColumn(
             state = listState,
             contentPadding = contentPadding,
@@ -83,7 +99,11 @@ fun ChatScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             item(key = "header") {
-                ListHeader { Text(title, maxLines = 1) }
+                ListHeader(
+                    transformation = SurfaceTransformation(transformationSpec)
+                ) {
+                    Text(title, maxLines = 1)
+                }
             }
 
             if (canLoadMore) {
@@ -116,19 +136,9 @@ fun ChatScreen(
                     now = now,
                     loadImage = loadImage,
                     onPlayVoice = onPlayVoice,
-                    playingId = playingId
+                    playingId = playingId,
+                    modifier = Modifier.transformedHeight(this, transformationSpec)
                 )
-            }
-
-            item(key = "reply") {
-                Button(
-                    onClick = { inputLauncher.launch(buildInputIntent()) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp)
-                ) {
-                    Text("Rispondi")
-                }
             }
 
             item(key = "quick") {
@@ -190,7 +200,8 @@ private fun MessageBubble(
     now: Long,
     loadImage: suspend (String) -> ImageBitmap?,
     onPlayVoice: (Long) -> Unit,
-    playingId: Long?
+    playingId: Long?,
+    modifier: Modifier = Modifier
 ) {
     val outgoing = message.outgoing
     val background = if (outgoing) {
@@ -205,7 +216,7 @@ private fun MessageBubble(
     }
 
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         horizontalAlignment = if (outgoing) Alignment.End else Alignment.Start
     ) {
         Box(

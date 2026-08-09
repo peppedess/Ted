@@ -39,8 +39,18 @@ class BridgeClient(context: Context) {
     private val capabilityClient = Wearable.getCapabilityClient(app)
     private val nodeClient = Wearable.getNodeClient(app)
 
-    fun chatList(): Flow<ChatList> =
-        itemFlow(TedPaths.CHATS) { TedCodec.decodeOrNull<ChatList>(it) }
+    data class ChatListData(val list: ChatList, val assets: Map<String, Asset>)
+
+    fun chatList(): Flow<ChatListData> =
+        mapFlow(TedPaths.CHATS) { map ->
+            val payload = map.getByteArray(TedPaths.KEY_PAYLOAD) ?: return@mapFlow null
+            val decoded = TedCodec.decodeOrNull<ChatList>(payload) ?: return@mapFlow null
+            val assets = map.keySet()
+                .filter { it != TedPaths.KEY_PAYLOAD && it != TedPaths.KEY_REVISION }
+                .mapNotNull { key -> map.getAsset(key)?.let { key to it } }
+                .toMap()
+            ChatListData(decoded, assets)
+        }
 
     /** Thread piu gli Asset allegati, indicizzati per chiave. */
     data class ThreadData(val thread: ChatThread, val assets: Map<String, Asset>)

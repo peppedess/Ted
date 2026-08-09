@@ -19,7 +19,12 @@ object MediaScaler {
 
     data class Thumb(val bytes: ByteArray, val width: Int, val height: Int)
 
-    fun thumbnail(path: String): Thumb? = runCatching {
+    /** Avatar: 64 px bastano per un cerchio da 32 dp anche su schermi densi. */
+    fun avatar(path: String): ByteArray? = scale(path, 64, 65)?.bytes
+
+    fun thumbnail(path: String): Thumb? = scale(path, MAX_DIM, QUALITY)
+
+    private fun scale(path: String, maxDim: Int, quality: Int): Thumb? = runCatching {
         val file = File(path)
         if (!file.exists() || file.length() == 0L) return null
 
@@ -30,14 +35,14 @@ object MediaScaler {
 
         val longest = max(bounds.outWidth, bounds.outHeight)
         var sample = 1
-        while (longest / sample > MAX_DIM * 2) sample *= 2
+        while (longest / sample > maxDim * 2) sample *= 2
 
         val decoded = BitmapFactory.decodeFile(
             path,
             BitmapFactory.Options().apply { inSampleSize = sample }
         ) ?: return null
 
-        val scale = MAX_DIM.toFloat() / max(decoded.width, decoded.height)
+        val scale = maxDim.toFloat() / max(decoded.width, decoded.height)
         val target = if (scale < 1f) {
             Bitmap.createScaledBitmap(
                 decoded,
@@ -50,7 +55,7 @@ object MediaScaler {
         }
 
         val out = ByteArrayOutputStream()
-        target.compress(Bitmap.CompressFormat.JPEG, QUALITY, out)
+        target.compress(Bitmap.CompressFormat.JPEG, quality, out)
 
         val thumb = Thumb(out.toByteArray(), target.width, target.height)
         if (target !== decoded) target.recycle()

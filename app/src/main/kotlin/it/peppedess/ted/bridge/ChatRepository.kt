@@ -37,6 +37,9 @@ class ChatRepository(
     )
 
     private val users = ConcurrentHashMap<Long, String>()
+
+    // Gli avatar cambiano di rado: scaricarli a ogni refresh sarebbe uno spreco.
+    private val avatarCache = ConcurrentHashMap<String, ByteArray>()
     private val refreshRequests = Channel<Unit>(Channel.CONFLATED)
 
     private val _chats = MutableStateFlow(ChatList(emptyList(), 0))
@@ -146,6 +149,13 @@ class ChatRepository(
                 val chat = td.send(TdApi.GetChat().apply { chatId = id })
                 ChatMapper.toSummary(chat, users)
             }.getOrNull()
+        }
+
+        // Solo per le chat in cima: piu giu non si guardano comunque.
+        summaries.take(MAX_AVATARS).forEach { summary ->
+            val key = summary.avatar ?: return@forEach
+            if (avatarCache.containsKey(key)) return@forEach
+            avatarBytes(summary.chatId)?.let { avatarCache[key] = it }
         }
 
         revision += 1
@@ -270,6 +280,18 @@ class ChatRepository(
         return ChatList(summaries, revision)
     }
 
+    /** Avatar gia scaricati, pronti per il Data Layer. */
+    fun avatars(): Map<String, ByteArray> = avatarCache.toMap()
+
+    private suspend fun avatarBytes(chatId: Long): ByteArray? {
+        val chat = runCatching {
+            td.send(TdApi.GetChat().apply { this.chatId = chatId })
+        }.getOrNull() ?: return null
+        val photo = chat.photo ?: return null
+        val path = downloadFile(photo.small.id) ?: return null
+        return MediaScaler.avatar(path)
+    }
+
     /** Scarica un file TDLib e restituisce il percorso locale, o null. */
     private suspend fun downloadFile(fileId: Int): String? = runCatching {
         td.send(
@@ -344,5 +366,6 @@ class ChatRepository(
     companion object {
         private const val TAG = "ChatRepository"
         private const val MAX_PHOTOS = 12
+        private const val MAX_AVATARS = 20
     }
 }

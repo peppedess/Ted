@@ -6,6 +6,8 @@ import org.drinkless.tdlib.TdApi
 /** Traduce le strutture TDLib nei modelli compatti di :protocol. */
 object ChatMapper {
 
+    fun avatarKey(chatId: Long) = "a$chatId"
+
     fun toSummary(chat: TdApi.Chat, users: Map<Long, String>): ChatSummary {
         val last = chat.lastMessage
         val isGroup = chat.type is TdApi.ChatTypeBasicGroup ||
@@ -28,7 +30,7 @@ object ChatMapper {
             unread = chat.unreadCount,
             outgoing = last?.isOutgoing ?: false,
             muted = (chat.notificationSettings?.muteFor ?: 0) > 0,
-            avatar = null
+            avatar = if (chat.photo != null) avatarKey(chat.id) else null
         )
     }
 
