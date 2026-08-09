@@ -47,6 +47,16 @@ fun ChatListScreen(
             item(key = "header") {
                 ListHeader { Text("Chat") }
             }
+
+            item(key = "new") {
+                CompactButton(
+                    onClick = onNewChat,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Nuova chat", maxLines = 1)
+                }
+            }
+
             items(
                 count = chats.size,
                 key = { index -> chats[index].chatId }
