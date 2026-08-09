@@ -351,6 +351,22 @@ class ChatRepository(
         Log.d(TAG, "messaggio inviato a $targetChatId")
     }
 
+    suspend fun setMuted(targetChatId: Long, muted: Boolean) {
+        runCatching {
+            td.send(
+                TdApi.SetChatNotificationSettings().apply {
+                    chatId = targetChatId
+                    notificationSettings = TdApi.ChatNotificationSettings().apply {
+                        useDefaultMuteFor = false
+                        // TDLib vuole secondi: un anno equivale a "per sempre".
+                        muteFor = if (muted) 365 * 24 * 3600 else 0
+                    }
+                }
+            )
+        }
+        requestRefresh()
+    }
+
     suspend fun markRead(targetChatId: Long, upTo: Long) {
         runCatching {
             td.send(

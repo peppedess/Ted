@@ -21,7 +21,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -46,6 +45,7 @@ import it.peppedess.ted.protocol.WatchCommand
 import it.peppedess.ted.wear.data.BridgeClient
 import it.peppedess.ted.wear.data.VoicePlayer
 import it.peppedess.ted.wear.ui.ChatListScreen
+import it.peppedess.ted.wear.ui.ChatListSkeleton
 import it.peppedess.ted.wear.ui.ChatScreen
 import it.peppedess.ted.wear.ui.SearchScreen
 import it.peppedess.ted.wear.ui.VoicePlayerScreen
@@ -166,6 +166,7 @@ private fun ChatsRoute(
     onChatClick: (Long) -> Unit,
     onNewChat: () -> Unit
 ) {
+    val scope = rememberCoroutineScope()
     val chatsFlow = remember(bridge) { bridge.chatList() }
     val statusFlow = remember(bridge) { bridge.status() }
     val chatList by chatsFlow.collectAsState(initial = null)
@@ -376,7 +377,9 @@ private fun Placeholder(message: String, spinning: Boolean) {
                 textAlign = TextAlign.Center
             )
             if (spinning) {
-                CircularProgressIndicator(modifier = Modifier.padding(top = 12.dp))
+                // Uno scheletro che luccica comunica "sto arrivando" meglio
+                // di una rotellina, perche anticipa la forma del contenuto.
+                ChatListSkeleton(modifier = Modifier.padding(top = 12.dp))
             }
         }
     }

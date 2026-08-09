@@ -155,6 +155,9 @@ class TdService : LifecycleService() {
                 bridge.publishSearch(repository.search(command.query))
             }
 
+            is WatchCommand.MuteChat ->
+                repository.setMuted(command.chatId, command.muted)
+
             is WatchCommand.Sleep -> stopSelf()
         }
     }
