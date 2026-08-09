@@ -117,6 +117,10 @@ sealed interface WatchCommand {
     data class RequestVoice(val chatId: Long, val messageId: Long) : WatchCommand
 
     @Serializable
+    @SerialName("search")
+    data class SearchChats(val query: String) : WatchCommand
+
+    @Serializable
     @SerialName("sleep")
     data object Sleep : WatchCommand
 }

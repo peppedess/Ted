@@ -151,6 +151,10 @@ class TdService : LifecycleService() {
                 }
             }
 
+            is WatchCommand.SearchChats -> {
+                bridge.publishSearch(repository.search(command.query))
+            }
+
             is WatchCommand.Sleep -> stopSelf()
         }
     }

@@ -12,6 +12,7 @@ object TedPaths {
     const val CHATS = "/ted/chats"
     const val STATUS = "/ted/status"
     const val PREFS = "/ted/prefs"
+    const val SEARCH = "/ted/search"
     private const val THREAD_PREFIX = "/ted/thread/"
 
     fun thread(chatId: Long): String = "$THREAD_PREFIX$chatId"

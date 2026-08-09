@@ -65,6 +65,9 @@ class BridgeClient(context: Context) {
         dataClient.getFdForAsset(asset).await().inputStream?.use { it.readBytes() }
     }.getOrNull()
 
+    fun search(): Flow<ChatList> =
+        itemFlow(TedPaths.SEARCH) { TedCodec.decodeOrNull<ChatList>(it) }
+
     fun prefs(): Flow<Preferences> =
         itemFlow(TedPaths.PREFS) { TedCodec.decodeOrNull<Preferences>(it) }
 

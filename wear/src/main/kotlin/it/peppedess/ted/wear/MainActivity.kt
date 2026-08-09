@@ -47,6 +47,7 @@ import it.peppedess.ted.wear.data.BridgeClient
 import it.peppedess.ted.wear.data.VoicePlayer
 import it.peppedess.ted.wear.ui.ChatListScreen
 import it.peppedess.ted.wear.ui.ChatScreen
+import it.peppedess.ted.wear.ui.SearchScreen
 import it.peppedess.ted.wear.ui.VoicePlayerScreen
 import it.peppedess.ted.wear.ui.TedTheme
 import kotlinx.coroutines.delay
@@ -115,7 +116,18 @@ private fun WearRoot(initialChatId: Long? = null) {
                     ChatsRoute(
                         bridge = bridge,
                         now = now,
-                        onChatClick = { chatId -> navController.navigate("chat/$chatId") }
+                        onChatClick = { chatId -> navController.navigate("chat/$chatId") },
+                        onNewChat = { navController.navigate("search") }
+                    )
+                }
+                composable("search") {
+                    SearchRoute(
+                        bridge = bridge,
+                        onSelect = { chatId ->
+                            navController.navigate("chat/$chatId") {
+                                popUpTo("chats")
+                            }
+                        }
                     )
                 }
                 composable("voice/{chatId}/{messageId}") { entry ->
@@ -244,6 +256,41 @@ private fun ThreadRoute(
 
 /** Oltre questa soglia il thread non entra piu in un singolo DataItem. */
 private const val MAX_MESSAGES = 200
+
+@Composable
+private fun SearchRoute(
+    bridge: BridgeClient,
+    onSelect: (Long) -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    val resultsFlow = remember(bridge) { bridge.search() }
+    val results by resultsFlow.collectAsState(initial = null)
+
+    var query by remember { mutableStateOf("") }
+    var searching by remember { mutableStateOf(false) }
+
+    // La ricerca e finita quando arriva una revisione piu recente di quella
+    // che avevamo prima di chiedere.
+    val baseline = remember { results?.revision ?: 0L }
+    LaunchedEffect(results?.revision) {
+        if ((results?.revision ?: 0L) > baseline) searching = false
+    }
+
+    SearchScreen(
+        query = query,
+        results = results?.chats.orEmpty(),
+        searching = searching,
+        onQuery = { text ->
+            query = text
+            searching = true
+            scope.launch {
+                runCatching { bridge.send(WatchCommand.SearchChats(text)) }
+                    .onFailure { searching = false }
+            }
+        },
+        onSelect = onSelect
+    )
+}
 
 @Composable
 private fun VoiceRoute(

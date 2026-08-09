@@ -222,6 +222,54 @@ class ChatRepository(
         return collected
     }
 
+    /**
+     * Cerca fra le chat conosciute e fra i contatti in rubrica.
+     *
+     * I contatti senza conversazione aperta non hanno un chatId: glielo
+     * creiamo al volo, che e esattamente quello che fa Telegram quando
+     * scrivi a qualcuno per la prima volta.
+     */
+    suspend fun search(query: String): ChatList {
+        val ids = mutableListOf<Long>()
+
+        runCatching {
+            td.send(
+                TdApi.SearchChats().apply {
+                    this.query = query
+                    limit = 15
+                }
+            ).chatIds.toList()
+        }.getOrNull()?.let { ids += it }
+
+        runCatching {
+            td.send(
+                TdApi.SearchContacts().apply {
+                    this.query = query
+                    limit = 10
+                }
+            ).userIds.toList()
+        }.getOrNull()?.forEach { userId ->
+            runCatching {
+                td.send(
+                    TdApi.CreatePrivateChat().apply {
+                        this.userId = userId
+                        force = false
+                    }
+                ).id
+            }.getOrNull()?.let { if (it !in ids) ids += it }
+        }
+
+        val summaries = ids.take(20).mapNotNull { id ->
+            runCatching {
+                ChatMapper.toSummary(td.send(TdApi.GetChat().apply { chatId = id }), users)
+            }.getOrNull()
+        }
+
+        revision += 1
+        Log.d(TAG, "ricerca '$query': ${summaries.size} risultati")
+        return ChatList(summaries, revision)
+    }
+
     /** Scarica un file TDLib e restituisce il percorso locale, o null. */
     private suspend fun downloadFile(fileId: Int): String? = runCatching {
         td.send(

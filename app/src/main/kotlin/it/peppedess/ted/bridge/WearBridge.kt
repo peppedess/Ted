@@ -67,6 +67,11 @@ class WearBridge(context: Context) {
         Log.d(TAG, "vocale pubblicato: ${bytes.size} byte")
     }
 
+    suspend fun publishSearch(results: ChatList) {
+        putItem(TedPaths.SEARCH, TedCodec.encode(results), results.revision)
+        Log.d(TAG, "risultati ricerca pubblicati: ${results.chats.size}")
+    }
+
     suspend fun publishPrefs(prefs: Preferences) {
         putItem(TedPaths.PREFS, TedCodec.encode(prefs), prefs.revision)
         Log.d(TAG, "preferenze pubblicate, rev ${prefs.revision}")

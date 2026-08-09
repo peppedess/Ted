@@ -20,6 +20,7 @@ import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.Card
 import androidx.wear.compose.material3.CardDefaults
+import androidx.wear.compose.material3.CompactButton
 import androidx.wear.compose.material3.ListHeader
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.ScreenScaffold
@@ -30,7 +31,8 @@ import it.peppedess.ted.protocol.ChatSummary
 fun ChatListScreen(
     chats: List<ChatSummary>,
     now: Long,
-    onChatClick: (Long) -> Unit
+    onChatClick: (Long) -> Unit,
+    onNewChat: () -> Unit
 ) {
     val listState = rememberTransformingLazyColumnState()
     val spacing = LocalTedSpacing.current
