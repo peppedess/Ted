@@ -15,6 +15,7 @@ import com.google.android.gms.wearable.Wearable
 import it.peppedess.ted.protocol.BridgeStatus
 import it.peppedess.ted.protocol.ChatList
 import it.peppedess.ted.protocol.ChatThread
+import it.peppedess.ted.protocol.Preferences
 import it.peppedess.ted.protocol.TedCodec
 import it.peppedess.ted.protocol.TedPaths
 import it.peppedess.ted.protocol.WatchCommand
@@ -63,6 +64,9 @@ class BridgeClient(context: Context) {
     suspend fun loadAsset(asset: Asset): ByteArray? = runCatching {
         dataClient.getFdForAsset(asset).await().inputStream?.use { it.readBytes() }
     }.getOrNull()
+
+    fun prefs(): Flow<Preferences> =
+        itemFlow(TedPaths.PREFS) { TedCodec.decodeOrNull<Preferences>(it) }
 
     fun status(): Flow<BridgeStatus> =
         itemFlow(TedPaths.STATUS) { TedCodec.decodeOrNull<BridgeStatus>(it) }

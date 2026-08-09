@@ -52,6 +52,7 @@ fun ChatScreen(
     playingId: Long?
 ) {
     val listState = rememberTransformingLazyColumnState()
+    val spacing = LocalTedSpacing.current
 
     val inputLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -68,7 +69,7 @@ fun ChatScreen(
         TransformingLazyColumn(
             state = listState,
             contentPadding = contentPadding,
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(spacing.bubbleGap),
             modifier = Modifier.fillMaxWidth()
         ) {
             item(key = "header") {
@@ -202,7 +203,7 @@ private fun MessageBubble(
                 .fillMaxWidth(0.88f)
                 .clip(RoundedCornerShape(14.dp))
                 .background(background)
-                .padding(horizontal = 10.dp, vertical = 6.dp)
+                .padding(horizontal = 10.dp, vertical = LocalTedSpacing.current.bubblePadding)
         ) {
             Column {
                 if (!outgoing && message.sender.isNotBlank()) {

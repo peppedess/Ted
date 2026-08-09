@@ -1,16 +1,24 @@
 package it.peppedess.ted.wear.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.wear.compose.material3.ColorScheme
 import androidx.wear.compose.material3.MaterialTheme
+import androidx.wear.compose.material3.dynamicColorScheme
 
 /**
  * Palette ispirata al tema scuro di Telegram.
  *
- * Fissa e non dinamica: prima prendeva i colori dal quadrante, con risultati
- * imprevedibili. Su un'app di messaggistica l'identita conta piu della coerenza
- * col watch face.
+ * E il default perche su un'app di messaggistica l'identita conta piu della
+ * coerenza col quadrante. Chi preferisce il contrario lo accende dalle
+ * impostazioni sul telefono.
  */
 private val TedColors = ColorScheme(
     primary = Color(0xFF3EAEE8),
@@ -39,7 +47,47 @@ private val TedColors = ColorScheme(
     onError = Color(0xFF3F0906)
 )
 
+/** Spaziature governate dalla preferenza "densita". */
+data class TedSpacing(
+    val listGap: Dp,
+    val bubbleGap: Dp,
+    val bubblePadding: Dp
+)
+
+val LocalTedSpacing = staticCompositionLocalOf {
+    TedSpacing(listGap = 4.dp, bubbleGap = 6.dp, bubblePadding = 6.dp)
+}
+
+private fun spacingFor(density: Int): TedSpacing = when (density) {
+    0 -> TedSpacing(listGap = 2.dp, bubbleGap = 3.dp, bubblePadding = 4.dp)
+    2 -> TedSpacing(listGap = 8.dp, bubbleGap = 10.dp, bubblePadding = 10.dp)
+    else -> TedSpacing(listGap = 4.dp, bubbleGap = 6.dp, bubblePadding = 6.dp)
+}
+
 @Composable
-fun TedTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = TedColors, content = content)
+fun TedTheme(
+    dynamicColors: Boolean = false,
+    fontScale: Float = 1f,
+    density: Int = 1,
+    content: @Composable () -> Unit
+) {
+    val scheme = if (dynamicColors) {
+        dynamicColorScheme(LocalContext.current) ?: TedColors
+    } else {
+        TedColors
+    }
+
+    val current = LocalDensity.current
+
+    CompositionLocalProvider(
+        // Scalare il fontScale della Density e l'unico modo per ingrandire
+        // tutto il testo senza toccare ogni singolo stile.
+        LocalDensity provides Density(
+            density = current.density,
+            fontScale = current.fontScale * fontScale.coerceIn(0.7f, 1.5f)
+        ),
+        LocalTedSpacing provides spacingFor(density)
+    ) {
+        MaterialTheme(colorScheme = scheme, content = content)
+    }
 }

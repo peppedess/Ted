@@ -40,6 +40,7 @@ import androidx.wear.compose.navigation.SwipeDismissableNavHost
 import androidx.wear.compose.navigation.composable
 import androidx.wear.compose.navigation.rememberSwipeDismissableNavController
 import it.peppedess.ted.protocol.BridgeState
+import it.peppedess.ted.protocol.Preferences
 import it.peppedess.ted.protocol.WatchCommand
 import it.peppedess.ted.wear.data.BridgeClient
 import it.peppedess.ted.wear.data.VoicePlayer
@@ -69,6 +70,9 @@ private fun WearRoot(initialChatId: Long? = null) {
     val bridge = remember { BridgeClient(context) }
     val navController = rememberSwipeDismissableNavController()
 
+    val prefsFlow = remember(bridge) { bridge.prefs() }
+    val prefs by prefsFlow.collectAsState(initial = Preferences())
+
     val notifPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { }
@@ -95,7 +99,11 @@ private fun WearRoot(initialChatId: Long? = null) {
         }
     }
 
-    TedTheme {
+    TedTheme(
+        dynamicColors = prefs.dynamicColors,
+        fontScale = prefs.fontScale,
+        density = prefs.density
+    ) {
         AppScaffold {
             SwipeDismissableNavHost(
                 navController = navController,

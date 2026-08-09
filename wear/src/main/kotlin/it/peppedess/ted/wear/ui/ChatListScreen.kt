@@ -33,12 +33,13 @@ fun ChatListScreen(
     onChatClick: (Long) -> Unit
 ) {
     val listState = rememberTransformingLazyColumnState()
+    val spacing = LocalTedSpacing.current
 
     ScreenScaffold(scrollState = listState) { contentPadding ->
         TransformingLazyColumn(
             state = listState,
             contentPadding = contentPadding,
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(spacing.listGap),
             modifier = Modifier.fillMaxWidth()
         ) {
             item(key = "header") {
