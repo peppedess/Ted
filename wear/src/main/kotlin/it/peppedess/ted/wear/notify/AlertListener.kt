@@ -60,7 +60,7 @@ class AlertListener : WearableListenerService() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
         )
         val replyAction = NotificationCompat.Action.Builder(
-            android.R.drawable.ic_menu_send,
+            it.peppedess.ted.wear.R.drawable.ic_ted_send,
             "Rispondi",
             replyPending
         ).addRemoteInput(
@@ -70,7 +70,7 @@ class AlertListener : WearableListenerService() {
         ).build()
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.stat_notify_chat)
+            .setSmallIcon(it.peppedess.ted.wear.R.drawable.ic_ted_send)
             .setContentTitle(alert.chatTitle)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))

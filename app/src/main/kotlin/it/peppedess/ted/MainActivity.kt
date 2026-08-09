@@ -9,7 +9,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -18,18 +17,20 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import it.peppedess.ted.bridge.WearBridge
 import it.peppedess.ted.protocol.MessageAlert
 import it.peppedess.ted.tdlib.Td
 import it.peppedess.ted.ui.LoginScreen
+import it.peppedess.ted.ui.TedPhoneTheme
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { MaterialTheme { PhoneRoot() } }
+        setContent { TedPhoneTheme(dark = isSystemInDarkTheme()) { PhoneRoot() } }
     }
 }
 

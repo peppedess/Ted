@@ -175,7 +175,7 @@ class TdService : LifecycleService() {
         NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Ted")
             .setContentText(text)
-            .setSmallIcon(android.R.drawable.stat_notify_sync)
+            .setSmallIcon(R.drawable.ic_ted_send)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setSilent(true)
