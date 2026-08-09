@@ -19,6 +19,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -46,6 +47,7 @@ import it.peppedess.ted.wear.data.BridgeClient
 import it.peppedess.ted.wear.data.VoicePlayer
 import it.peppedess.ted.wear.ui.ChatListScreen
 import it.peppedess.ted.wear.ui.ChatScreen
+import it.peppedess.ted.wear.ui.VoicePlayerScreen
 import it.peppedess.ted.wear.ui.TedTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -116,12 +118,28 @@ private fun WearRoot(initialChatId: Long? = null) {
                         onChatClick = { chatId -> navController.navigate("chat/$chatId") }
                     )
                 }
+                composable("voice/{chatId}/{messageId}") { entry ->
+                    val cid = entry.arguments?.getString("chatId")?.toLongOrNull()
+                    val mid = entry.arguments?.getString("messageId")?.toLongOrNull()
+                    if (cid == null || mid == null) {
+                        Placeholder("Vocale non valido", spinning = false)
+                    } else {
+                        VoiceRoute(bridge = bridge, chatId = cid, messageId = mid)
+                    }
+                }
                 composable("chat/{chatId}") { entry ->
                     val chatId = entry.arguments?.getString("chatId")?.toLongOrNull()
                     if (chatId == null) {
                         Placeholder("Chat non valida", spinning = false)
                     } else {
-                        ThreadRoute(bridge = bridge, chatId = chatId, now = now)
+                        ThreadRoute(
+                            bridge = bridge,
+                            chatId = chatId,
+                            now = now,
+                            onOpenVoice = { messageId ->
+                                navController.navigate("voice/$chatId/$messageId")
+                            }
+                        )
                     }
                 }
             }
@@ -166,7 +184,8 @@ private fun ChatsRoute(
 private fun ThreadRoute(
     bridge: BridgeClient,
     chatId: Long,
-    now: Long
+    now: Long,
+    onOpenVoice: (Long) -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -187,25 +206,6 @@ private fun ThreadRoute(
         runCatching { bridge.send(WatchCommand.MarkRead(chatId, last.messageId)) }
     }
 
-    // Il vocale non scende da solo: lo chiediamo al tocco e aspettiamo l'Asset.
-    var pendingVoice by remember { mutableStateOf<Long?>(null) }
-
-    LaunchedEffect(pendingVoice) {
-        val messageId = pendingVoice ?: return@LaunchedEffect
-        runCatching { bridge.send(WatchCommand.RequestVoice(chatId, messageId)) }
-        val asset = withTimeoutOrNull(25_000) { bridge.voice(chatId, messageId).first() }
-        val bytes = asset?.let { bridge.loadAsset(it) }
-        if (bytes != null) {
-            VoicePlayer.play(context, bytes) { pendingVoice = null }
-        } else {
-            pendingVoice = null
-        }
-    }
-
-    DisposableEffect(Unit) {
-        onDispose { VoicePlayer.stopPlayback() }
-    }
-
     val current = thread
     if (current == null) {
         Placeholder("Caricamento...", spinning = true)
@@ -222,8 +222,8 @@ private fun ThreadRoute(
                         BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
                     }
             },
-            onPlayVoice = { messageId -> pendingVoice = messageId },
-            playingId = pendingVoice,
+            onPlayVoice = { messageId -> onOpenVoice(messageId) },
+            playingId = null,
             canLoadMore = current.thread.messages.size >= limit && limit < MAX_MESSAGES,
             onLoadMore = { limit = (limit + 40).coerceAtMost(MAX_MESSAGES) },
             onSend = { text ->
@@ -237,6 +237,47 @@ private fun ThreadRoute(
 
 /** Oltre questa soglia il thread non entra piu in un singolo DataItem. */
 private const val MAX_MESSAGES = 200
+
+@Composable
+private fun VoiceRoute(
+    bridge: BridgeClient,
+    chatId: Long,
+    messageId: Long
+) {
+    val context = LocalContext.current
+    val state by VoicePlayer.state.collectAsState()
+
+    // Il volume di sistema puo cambiare da fuori: lo rileggiamo di continuo.
+    val volume by produceState(initialValue = 0, key1 = Unit) {
+        while (true) {
+            value = VoicePlayer.volume(context)
+            delay(400)
+        }
+    }
+    val volumeMax = remember { VoicePlayer.volumeMax(context) }
+
+    LaunchedEffect(chatId, messageId) {
+        VoicePlayer.markLoading()
+        runCatching { bridge.send(WatchCommand.RequestVoice(chatId, messageId)) }
+        val asset = withTimeoutOrNull(25_000) { bridge.voice(chatId, messageId).first() }
+        val bytes = asset?.let { bridge.loadAsset(it) }
+        if (bytes != null) VoicePlayer.load(context, bytes) else VoicePlayer.stop()
+    }
+
+    DisposableEffect(Unit) {
+        onDispose { VoicePlayer.stop() }
+    }
+
+    VoicePlayerScreen(
+        title = "Messaggio vocale",
+        state = state,
+        volume = volume,
+        volumeMax = volumeMax,
+        onTogglePlay = { VoicePlayer.togglePlayPause() },
+        onSeekBy = { VoicePlayer.seekBy(it) },
+        onVolumeChange = { VoicePlayer.setVolume(context, it) }
+    )
+}
 
 private fun placeholderText(
     hasList: Boolean,
