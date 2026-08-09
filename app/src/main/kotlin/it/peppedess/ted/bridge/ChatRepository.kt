@@ -100,13 +100,17 @@ class ChatRepository(
         }.getOrNull() ?: return
 
         // Le chat silenziate restano silenziate anche sul polso.
-        if ((chat.notificationSettings?.muteFor ?: 0) > 0) return
+        if ((chat.notificationSettings?.muteFor ?: 0) > 0) {
+            Log.d(TAG, "avviso soppresso: ${chat.title} e silenziata")
+            return
+        }
 
         val sender = when (val s = message.senderId) {
             is TdApi.MessageSenderUser -> users[s.userId].orEmpty()
             else -> ""
         }
 
+        Log.d(TAG, "nuovo messaggio in ${chat.title}")
         _alerts.tryEmit(
             MessageAlert(
                 chatId = message.chatId,

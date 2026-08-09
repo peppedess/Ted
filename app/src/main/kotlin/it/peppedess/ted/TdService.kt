@@ -38,6 +38,9 @@ class TdService : LifecycleService() {
 
     override fun onCreate() {
         super.onCreate()
+        // Prima di tutto: il servizio puo partire a processo freddo dal
+        // WearableListenerService, e senza questo leggerebbe i default.
+        Settings.load(this)
         _running.value = true
         createChannel()
         startForeground(NOTIFICATION_ID, buildNotification("Avvio..."))
@@ -80,8 +83,6 @@ class TdService : LifecycleService() {
             }
         }
 
-        Settings.load(this)
-
         // Ogni cambio di preferenze scende sull'orologio.
         lifecycleScope.launch {
             Settings.prefs.collectLatest { runCatching { bridge.publishPrefs(it) } }
@@ -90,8 +91,13 @@ class TdService : LifecycleService() {
         // Avvisi verso l'orologio, solo se l'utente li ha accesi.
         lifecycleScope.launch {
             repository.alerts.collect { alert ->
-                if (!Settings.prefs.value.alerts) return@collect
+                if (!Settings.prefs.value.alerts) {
+                    android.util.Log.d(TAG, "avviso scartato: notifiche spente")
+                    return@collect
+                }
+                android.util.Log.d(TAG, "avviso inoltrato: ${alert.chatTitle}")
                 runCatching { bridge.sendAlert(alert) }
+                    .onFailure { android.util.Log.w(TAG, "invio avviso fallito", it) }
             }
         }
 
@@ -103,7 +109,7 @@ class TdService : LifecycleService() {
                 if (Settings.prefs.value.alerts) continue
                 val idleMinutes = (System.currentTimeMillis() - lastActivity) / 60_000
                 if (idleMinutes >= Settings.IDLE_MINUTES) {
-                    android.util.Log.d("TdService", "inattivo da $idleMinutes min, mi spengo")
+                    android.util.Log.d(TAG, "inattivo da $idleMinutes min, mi spengo")
                     stopSelf()
                     break
                 }
@@ -113,7 +119,7 @@ class TdService : LifecycleService() {
         lifecycleScope.launch {
             for (command in commands) {
                 runCatching { handle(command) }
-                    .onFailure { android.util.Log.w("TdService", "comando fallito", it) }
+                    .onFailure { android.util.Log.w(TAG, "comando fallito", it) }
             }
         }
     }
@@ -187,6 +193,8 @@ class TdService : LifecycleService() {
             .build()
 
     companion object {
+        private const val TAG = "TdService"
+
         private val _running = MutableStateFlow(false)
 
         /** Vero mentre il servizio e vivo. Serve alla UI per non mentire all'utente. */
