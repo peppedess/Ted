@@ -196,6 +196,9 @@ private fun ThreadRoute(
     // dai 100 KB del DataItem, non da una scelta di comodo.
     var limit by remember(chatId) { mutableIntStateOf(30) }
 
+    // Una volta risaliti nella cronologia smettiamo di riportare l'utente in fondo.
+    var browsingBack by remember(chatId) { mutableStateOf(false) }
+
     LaunchedEffect(chatId, limit) {
         runCatching { bridge.send(WatchCommand.OpenChat(chatId, limit)) }
     }
@@ -225,7 +228,11 @@ private fun ThreadRoute(
             onPlayVoice = { messageId -> onOpenVoice(messageId) },
             playingId = null,
             canLoadMore = current.thread.messages.size >= limit && limit < MAX_MESSAGES,
-            onLoadMore = { limit = (limit + 40).coerceAtMost(MAX_MESSAGES) },
+            onLoadMore = {
+                limit = (limit + 40).coerceAtMost(MAX_MESSAGES)
+                browsingBack = true
+            },
+            anchorKey = if (browsingBack) 0L else current.thread.revision,
             onSend = { text ->
                 scope.launch {
                     runCatching { bridge.send(WatchCommand.SendText(chatId, text)) }

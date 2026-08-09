@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
@@ -46,6 +47,7 @@ fun ChatScreen(
     now: Long,
     canLoadMore: Boolean,
     onLoadMore: () -> Unit,
+    anchorKey: Long,
     onSend: (String) -> Unit,
     loadImage: suspend (String) -> ImageBitmap?,
     onPlayVoice: (Long) -> Unit,
@@ -53,6 +55,14 @@ fun ChatScreen(
 ) {
     val listState = rememberTransformingLazyColumnState()
     val spacing = LocalTedSpacing.current
+
+    // Su una chat si guarda il fondo, non l'inizio. anchorKey vale 0 dopo un
+    // "Carica altri", cosi non strappiamo via lo scroll a chi sta leggendo indietro.
+    LaunchedEffect(anchorKey, messages.size) {
+        if (anchorKey == 0L || messages.isEmpty()) return@LaunchedEffect
+        val header = 1 + if (canLoadMore) 1 else 0
+        runCatching { listState.scrollToItem(header + messages.size - 1) }
+    }
 
     val inputLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
