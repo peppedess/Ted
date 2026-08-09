@@ -82,10 +82,15 @@ class TdService : LifecycleService() {
 
         Settings.load(this)
 
+        // Ogni cambio di preferenze scende sull'orologio.
+        lifecycleScope.launch {
+            Settings.prefs.collectLatest { runCatching { bridge.publishPrefs(it) } }
+        }
+
         // Avvisi verso l'orologio, solo se l'utente li ha accesi.
         lifecycleScope.launch {
             repository.alerts.collect { alert ->
-                if (!Settings.alertsEnabled.value) return@collect
+                if (!Settings.prefs.value.alerts) return@collect
                 runCatching { bridge.sendAlert(alert) }
             }
         }
@@ -95,7 +100,7 @@ class TdService : LifecycleService() {
         lifecycleScope.launch {
             while (true) {
                 delay(60_000)
-                if (Settings.alertsEnabled.value) continue
+                if (Settings.prefs.value.alerts) continue
                 val idleMinutes = (System.currentTimeMillis() - lastActivity) / 60_000
                 if (idleMinutes >= Settings.IDLE_MINUTES) {
                     android.util.Log.d("TdService", "inattivo da $idleMinutes min, mi spengo")

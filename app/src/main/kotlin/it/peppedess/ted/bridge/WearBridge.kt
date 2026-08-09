@@ -11,6 +11,7 @@ import it.peppedess.ted.protocol.BridgeStatus
 import it.peppedess.ted.protocol.ChatList
 import it.peppedess.ted.protocol.ChatThread
 import it.peppedess.ted.protocol.MessageAlert
+import it.peppedess.ted.protocol.Preferences
 import it.peppedess.ted.protocol.TedCodec
 import it.peppedess.ted.protocol.TedPaths
 import kotlinx.coroutines.tasks.await
@@ -64,6 +65,11 @@ class WearBridge(context: Context) {
         }.asPutDataRequest().setUrgent()
         dataClient.putDataItem(request).await()
         Log.d(TAG, "vocale pubblicato: ${bytes.size} byte")
+    }
+
+    suspend fun publishPrefs(prefs: Preferences) {
+        putItem(TedPaths.PREFS, TedCodec.encode(prefs), prefs.revision)
+        Log.d(TAG, "preferenze pubblicate, rev ${prefs.revision}")
     }
 
     suspend fun publishStatus(state: BridgeState, detail: String?, revision: Long) {

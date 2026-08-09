@@ -131,3 +131,15 @@ data class MessageAlert(
     val messageId: Long,
     val date: Long
 )
+
+/** Preferenze condivise: decise sul telefono, applicate sull'orologio. */
+@Serializable
+data class Preferences(
+    val alerts: Boolean = false,
+    /** Fattore di scala del testo, 0.8 - 1.3. */
+    val fontScale: Float = 1f,
+    /** 0 compatta, 1 normale, 2 ariosa. */
+    val density: Int = 1,
+    val dynamicColors: Boolean = false,
+    val revision: Long = 0
+)

@@ -39,6 +39,7 @@ fun LoginScreen(
     alertsEnabled: Boolean,
     onAlertsChange: (Boolean) -> Unit,
     onTestAlert: () -> Unit,
+    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
@@ -96,6 +97,7 @@ fun LoginScreen(
                 alertsEnabled = alertsEnabled,
                 onAlertsChange = onAlertsChange,
                 onTestAlert = onTestAlert,
+                onOpenSettings = onOpenSettings,
                 onContinue = onReady,
                 onStop = onStop,
                 onLogout = { submit { client.logOut() } }
@@ -262,6 +264,13 @@ private fun ReadyStep(
             )
         }
         Switch(checked = alertsEnabled, onCheckedChange = onAlertsChange)
+    }
+
+    TextButton(
+        onClick = onOpenSettings,
+        modifier = Modifier.padding(top = 8.dp)
+    ) {
+        Text("Impostazioni")
     }
 
     TextButton(

@@ -14,8 +14,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValueCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.platform.LocalContext
@@ -24,6 +28,7 @@ import it.peppedess.ted.bridge.WearBridge
 import it.peppedess.ted.protocol.MessageAlert
 import it.peppedess.ted.tdlib.Td
 import it.peppedess.ted.ui.LoginScreen
+import it.peppedess.ted.ui.SettingsScreen
 import it.peppedess.ted.ui.TedPhoneTheme
 import kotlinx.coroutines.launch
 
@@ -42,7 +47,8 @@ private fun PhoneRoot() {
     val bridge = remember { WearBridge(context) }
     val stage by client.stage.collectAsState()
     val bridgeRunning by TdService.running.collectAsState()
-    val alertsEnabled by Settings.alertsEnabled.collectAsState()
+    val prefs by Settings.prefs.collectAsState()
+    var showSettings by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { Settings.load(context) }
 
@@ -63,12 +69,25 @@ private fun PhoneRoot() {
     }
 
     Scaffold { inner ->
+        if (showSettings) {
+            SettingsScreen(
+                prefs = prefs,
+                onChange = { transform ->
+                    Settings.update(context, transform)
+                    scope.launch { runCatching { bridge.publishPrefs(Settings.prefs.value) } }
+                },
+                onBack = { showSettings = false },
+                modifier = Modifier.padding(inner)
+            )
+            return@Scaffold
+        }
         LoginScreen(
             client = client,
             stage = stage,
             bridgeRunning = bridgeRunning,
-            alertsEnabled = alertsEnabled,
-            onAlertsChange = { Settings.setAlertsEnabled(context, it) },
+            alertsEnabled = prefs.alerts,
+            onAlertsChange = { value -> Settings.update(context) { p -> p.copy(alerts = value) } },
+            onOpenSettings = { showSettings = true },
             onTestAlert = {
                 // Salta TDLib e l'interruttore: prova solo trasporto e notifica.
                 scope.launch {
