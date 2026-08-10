@@ -385,9 +385,13 @@ class ChatRepository(
                 TdApi.SendMessage().apply {
                     chatId = targetChatId
                     inputMessageContent = TdApi.InputMessageVoiceNote().apply {
-                        voiceNote = TdApi.InputFileLocal(file.absolutePath)
-                        duration = seconds
-                        waveform = ByteArray(0)
+                        // Il file non va nel messaggio ma dentro InputVoiceNote,
+                        // che porta con se anche durata e forma d'onda.
+                        voiceNote = TdApi.InputVoiceNote().apply {
+                            voiceNote = TdApi.InputFileLocal(file.absolutePath)
+                            duration = seconds
+                            waveform = ByteArray(0)
+                        }
                         caption = TdApi.FormattedText().apply {
                             text = ""
                             entities = emptyArray()
