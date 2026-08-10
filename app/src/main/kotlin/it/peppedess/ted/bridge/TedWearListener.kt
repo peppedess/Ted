@@ -5,6 +5,7 @@ import com.google.android.gms.wearable.DataEvent
 import com.google.android.gms.wearable.DataEventBuffer
 import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.MessageEvent
+import com.google.android.gms.wearable.Wearable
 import com.google.android.gms.wearable.WearableListenerService
 import it.peppedess.ted.TdService
 import it.peppedess.ted.protocol.TedCodec
@@ -57,6 +58,12 @@ class TedWearListener : WearableListenerService() {
             Log.d(TAG, "vocale in arrivo dall'orologio per $chatId, ${seconds}s")
             TdService.start(this)
             TdService.deliverVoice(chatId, asset, seconds)
+
+            // Senza questo il vocale verrebbe riproposto a ogni
+            // risincronizzazione del Data Layer.
+            runCatching {
+                Wearable.getDataClient(this).deleteDataItems(event.dataItem.uri)
+            }
         }
     }
 

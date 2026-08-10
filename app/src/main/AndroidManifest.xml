@@ -48,6 +48,15 @@
                 <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
                 <data android:scheme="wear" android:host="*" android:pathPrefix="/ted" />
             </intent-filter>
+            <!--
+                Filtro separato e ristretto ai vocali: con pathPrefix "/ted"
+                il sistema sveglierebbe il processo a ogni DataItem, comprese
+                le chat che pubblica il telefono stesso.
+            -->
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
+                <data android:scheme="wear" android:host="*" android:pathPrefix="/ted/outvoice" />
+            </intent-filter>
         </service>
 
     </application>
