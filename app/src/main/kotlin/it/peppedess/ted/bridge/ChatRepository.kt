@@ -367,6 +367,40 @@ class ChatRepository(
         requestRefresh()
     }
 
+    /**
+     * Inoltra a Telegram un vocale registrato sull'orologio.
+     *
+     * TDLib vuole un percorso su disco, non dei byte: scriviamo un file
+     * temporaneo e glielo diamo come InputFileLocal.
+     */
+    suspend fun sendVoice(targetChatId: Long, bytes: ByteArray, seconds: Int) {
+        val file = File.createTempFile("ted_out_", ".ogg")
+        runCatching { file.writeBytes(bytes) }.onFailure {
+            Log.w(TAG, "vocale non scrivibile", it)
+            return
+        }
+
+        runCatching {
+            td.send(
+                TdApi.SendMessage().apply {
+                    chatId = targetChatId
+                    inputMessageContent = TdApi.InputMessageVoiceNote().apply {
+                        voiceNote = TdApi.InputFileLocal(file.absolutePath)
+                        duration = seconds
+                        waveform = ByteArray(0)
+                        caption = TdApi.FormattedText().apply {
+                            text = ""
+                            entities = emptyArray()
+                        }
+                    }
+                }
+            )
+            Log.d(TAG, "vocale inviato a $targetChatId, ${seconds}s")
+        }.onFailure { Log.w(TAG, "invio vocale fallito", it) }
+
+        requestRefresh()
+    }
+
     suspend fun markRead(targetChatId: Long, upTo: Long) {
         runCatching {
             td.send(

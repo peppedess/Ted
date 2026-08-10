@@ -10,6 +10,7 @@ import com.google.android.gms.wearable.DataEvent
 import com.google.android.gms.wearable.DataItem
 import com.google.android.gms.wearable.DataMap
 import com.google.android.gms.wearable.DataMapItem
+import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.PutDataRequest
 import com.google.android.gms.wearable.Wearable
 import it.peppedess.ted.protocol.BridgeStatus
@@ -123,6 +124,19 @@ class BridgeClient(context: Context) {
     private fun mapOf(item: DataItem): DataMap? = runCatching {
         DataMapItem.fromDataItem(item).dataMap
     }.getOrNull()
+
+    /**
+     * Il vocale viaggia come Asset su DataItem, non su MessageClient:
+     * un messaggio e limitato a un centinaio di kilobyte, un Asset no.
+     */
+    suspend fun sendVoice(chatId: Long, bytes: ByteArray, seconds: Int) {
+        val request = PutDataMapRequest.create(TedPaths.outVoice(chatId)).apply {
+            dataMap.putAsset(TedPaths.KEY_VOICE, Asset.createFromBytes(bytes))
+            dataMap.putInt(TedPaths.KEY_DURATION, seconds)
+            dataMap.putLong(TedPaths.KEY_REVISION, System.currentTimeMillis())
+        }.asPutDataRequest().setUrgent()
+        dataClient.putDataItem(request).await()
+    }
 
     suspend fun send(command: WatchCommand) {
         val payload = TedCodec.encode(command)

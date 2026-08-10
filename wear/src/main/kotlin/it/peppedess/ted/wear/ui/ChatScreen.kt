@@ -54,6 +54,7 @@ fun ChatScreen(
     onLoadMore: () -> Unit,
     anchorKey: Long,
     onSend: (String) -> Unit,
+    onRecord: () -> Unit,
     loadImage: suspend (String) -> ImageBitmap?,
     onPlayVoice: (Long) -> Unit,
     playingId: Long?
@@ -139,6 +140,15 @@ fun ChatScreen(
                     playingId = playingId,
                     modifier = Modifier.transformedHeight(this, transformationSpec)
                 )
+            }
+
+            item(key = "record") {
+                CompactButton(
+                    onClick = onRecord,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Vocale", maxLines = 1)
+                }
             }
 
             item(key = "quick") {

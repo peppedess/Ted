@@ -1,6 +1,9 @@
 package it.peppedess.ted.bridge
 
 import android.util.Log
+import com.google.android.gms.wearable.DataEvent
+import com.google.android.gms.wearable.DataEventBuffer
+import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.WearableListenerService
 import it.peppedess.ted.TdService
@@ -33,6 +36,27 @@ class TedWearListener : WearableListenerService() {
                 TdService.start(this)
                 TdService.deliver(command)
             }
+        }
+    }
+
+    /**
+     * Vocale registrato dall'orologio. Arriva come DataItem perche un Asset
+     * non ha il tetto dei cento kilobyte di un messaggio.
+     */
+    override fun onDataChanged(events: DataEventBuffer) {
+        for (event in events) {
+            if (event.type != DataEvent.TYPE_CHANGED) continue
+            val path = event.dataItem.uri.path ?: continue
+            val chatId = TedPaths.chatIdFromOutVoice(path) ?: continue
+
+            val map = runCatching { DataMapItem.fromDataItem(event.dataItem).dataMap }
+                .getOrNull() ?: continue
+            val asset = map.getAsset(TedPaths.KEY_VOICE) ?: continue
+            val seconds = map.getInt(TedPaths.KEY_DURATION, 0)
+
+            Log.d(TAG, "vocale in arrivo dall'orologio per $chatId, ${seconds}s")
+            TdService.start(this)
+            TdService.deliverVoice(chatId, asset, seconds)
         }
     }
 

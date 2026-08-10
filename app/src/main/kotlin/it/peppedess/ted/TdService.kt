@@ -9,6 +9,8 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
+import com.google.android.gms.wearable.Asset
+import com.google.android.gms.wearable.Wearable
 import it.peppedess.ted.bridge.ChatRepository
 import it.peppedess.ted.bridge.WearBridge
 import it.peppedess.ted.protocol.BridgeState
@@ -22,6 +24,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 /**
  * Tiene vivo il processo mentre TDLib e connesso, e fa da collante
@@ -112,6 +115,23 @@ class TdService : LifecycleService() {
                     android.util.Log.d(TAG, "inattivo da $idleMinutes min, mi spengo")
                     stopSelf()
                     break
+                }
+            }
+        }
+
+        // Vocali dall'orologio: l'Asset va risolto in byte prima di TDLib.
+        lifecycleScope.launch {
+            for (job in voiceJobs) {
+                lastActivity = System.currentTimeMillis()
+                runCatching {
+                    val stream = Wearable.getDataClient(this@TdService)
+                        .getFdForAsset(job.asset).await().inputStream
+                    val bytes = stream?.use { it.readBytes() }
+                    if (bytes != null) {
+                        repository.sendVoice(job.chatId, bytes, job.seconds)
+                    }
+                }.onFailure {
+                    android.util.Log.w(TAG, "vocale dall'orologio non recuperato", it)
                 }
             }
         }
@@ -215,6 +235,14 @@ class TdService : LifecycleService() {
 
         fun deliver(command: WatchCommand) {
             commands.trySend(command)
+        }
+
+        private data class VoiceJob(val chatId: Long, val asset: Asset, val seconds: Int)
+
+        private val voiceJobs = Channel<VoiceJob>(capacity = 8)
+
+        fun deliverVoice(chatId: Long, asset: Asset, seconds: Int) {
+            voiceJobs.trySend(VoiceJob(chatId, asset, seconds))
         }
 
         // Canale nuovo: l'importanza di uno gia creato non si puo alzare.

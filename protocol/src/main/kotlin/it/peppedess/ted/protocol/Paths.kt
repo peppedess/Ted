@@ -29,6 +29,14 @@ object TedPaths {
     // --- ChannelClient: vocali on demand ---
     const val CHANNEL_VOICE = "/ted/voice"
 
+    /** Vocale registrato dall'orologio, in attesa che il telefono lo inoltri. */
+    const val OUT_VOICE_PREFIX = "/ted/outvoice/"
+
+    fun outVoice(chatId: Long): String = "$OUT_VOICE_PREFIX$chatId"
+
+    fun chatIdFromOutVoice(path: String): Long? =
+        path.removePrefix(OUT_VOICE_PREFIX).takeIf { it != path }?.toLongOrNull()
+
     fun voiceChannel(chatId: Long, messageId: Long): String =
         "$CHANNEL_VOICE/$chatId/$messageId"
 
@@ -36,6 +44,7 @@ object TedPaths {
     const val KEY_PAYLOAD = "p"
     const val KEY_REVISION = "r"
     const val KEY_VOICE = "voice"
+    const val KEY_DURATION = "d"
 
     // --- Capability dichiarate in wear.xml ---
     const val CAPABILITY_PHONE = "ted_phone"

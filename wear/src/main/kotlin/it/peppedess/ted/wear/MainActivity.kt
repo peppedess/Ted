@@ -44,9 +44,11 @@ import it.peppedess.ted.protocol.Preferences
 import it.peppedess.ted.protocol.WatchCommand
 import it.peppedess.ted.wear.data.BridgeClient
 import it.peppedess.ted.wear.data.VoicePlayer
+import it.peppedess.ted.wear.data.VoiceRecorder
 import it.peppedess.ted.wear.ui.ChatListScreen
 import it.peppedess.ted.wear.ui.ChatListSkeleton
 import it.peppedess.ted.wear.ui.ChatScreen
+import it.peppedess.ted.wear.ui.RecordScreen
 import it.peppedess.ted.wear.ui.SearchScreen
 import it.peppedess.ted.wear.ui.VoicePlayerScreen
 import it.peppedess.ted.wear.ui.TedTheme
@@ -120,6 +122,18 @@ private fun WearRoot(initialChatId: Long? = null) {
                         onNewChat = { navController.navigate("search") }
                     )
                 }
+                composable("record/{chatId}") { entry ->
+                    val cid = entry.arguments?.getString("chatId")?.toLongOrNull()
+                    if (cid == null) {
+                        Placeholder("Chat non valida", spinning = false)
+                    } else {
+                        RecordRoute(
+                            bridge = bridge,
+                            chatId = cid,
+                            onDone = { navController.popBackStack() }
+                        )
+                    }
+                }
                 composable("search") {
                     SearchRoute(
                         bridge = bridge,
@@ -150,7 +164,8 @@ private fun WearRoot(initialChatId: Long? = null) {
                             now = now,
                             onOpenVoice = { messageId ->
                                 navController.navigate("voice/$chatId/$messageId")
-                            }
+                            },
+                            onRecord = { navController.navigate("record/$chatId") }
                         )
                     }
                 }
@@ -212,7 +227,8 @@ private fun ThreadRoute(
     bridge: BridgeClient,
     chatId: Long,
     now: Long,
-    onOpenVoice: (Long) -> Unit
+    onOpenVoice: (Long) -> Unit,
+    onRecord: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -260,6 +276,7 @@ private fun ThreadRoute(
                 browsingBack = true
             },
             anchorKey = if (browsingBack) 0L else current.thread.revision,
+            onRecord = onRecord,
             onSend = { text ->
                 scope.launch {
                     runCatching { bridge.send(WatchCommand.SendText(chatId, text)) }
@@ -304,6 +321,87 @@ private fun SearchRoute(
             }
         },
         onSelect = onSelect
+    )
+}
+
+@Composable
+private fun RecordRoute(
+    bridge: BridgeClient,
+    chatId: Long,
+    onDone: () -> Unit
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    var recording by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    val micPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            recording = VoiceRecorder.start(context)
+            if (!recording) error = "Microfono non disponibile"
+        } else {
+            error = "Permesso microfono negato"
+        }
+    }
+
+    // Contatore vivo mentre si registra.
+    val seconds by produceState(initialValue = 0, key1 = recording) {
+        while (recording) {
+            value = VoiceRecorder.elapsedSeconds()
+            delay(250)
+        }
+    }
+
+    // Il registratore si ferma da solo al tetto: seguiamolo.
+    LaunchedEffect(seconds) {
+        if (recording && seconds >= VoiceRecorder.MAX_SECONDS) {
+            recording = false
+            VoiceRecorder.finish()?.let { result ->
+                runCatching { bridge.sendVoice(chatId, result.bytes, result.seconds) }
+            }
+            onDone()
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose { VoiceRecorder.stop() }
+    }
+
+    RecordScreen(
+        recording = recording,
+        seconds = seconds,
+        maxSeconds = VoiceRecorder.MAX_SECONDS,
+        error = error,
+        onToggle = {
+            if (recording) {
+                recording = false
+                val result = VoiceRecorder.finish()
+                if (result == null) {
+                    error = "Registrazione troppo breve"
+                } else {
+                    scope.launch {
+                        runCatching { bridge.sendVoice(chatId, result.bytes, result.seconds) }
+                            .onFailure { error = it.message }
+                        onDone()
+                    }
+                }
+            } else {
+                error = null
+                val granted = ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.RECORD_AUDIO
+                ) == PackageManager.PERMISSION_GRANTED
+                if (granted) {
+                    recording = VoiceRecorder.start(context)
+                    if (!recording) error = "Microfono non disponibile"
+                } else {
+                    micPermission.launch(Manifest.permission.RECORD_AUDIO)
+                }
+            }
+        }
     )
 }
 
