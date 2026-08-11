@@ -1,6 +1,7 @@
 package it.peppedess.ted.wear.ui
 
 import android.app.RemoteInput
+import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -22,28 +23,31 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
-import androidx.wear.compose.material3.Button
+import androidx.wear.compose.material3.CompactButton
 import androidx.wear.compose.material3.EdgeButton
 import androidx.wear.compose.material3.EdgeButtonSize
-import androidx.wear.compose.material3.SurfaceTransformation
-import androidx.wear.compose.material3.lazy.rememberTransformationSpec
-import androidx.wear.compose.material3.lazy.transformedHeight
-import androidx.wear.compose.material3.CompactButton
 import androidx.wear.compose.material3.ListHeader
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.ScreenScaffold
+import androidx.wear.compose.material3.SurfaceTransformation
 import androidx.wear.compose.material3.Text
-import android.content.Intent
+import androidx.wear.compose.material3.lazy.rememberTransformationSpec
+import androidx.wear.compose.material3.lazy.transformedHeight
 import it.peppedess.ted.protocol.ChatMessage
 import it.peppedess.ted.protocol.MessageContent
 
 private const val KEY_REPLY = "ted_reply"
 
-/** Risposte rapide: sul polso battere testo e l'ultima risorsa. */
-private val QUICK_REPLIES = listOf("Ok", "Arrivo", "Ti richiamo", "Grazie", "No")
+/** Poche e brevi: una risposta rapida che non entra su una riga non serve. */
+private val QUICK_REPLIES = listOf("Ok", "Arrivo", "Ti richiamo", "Grazie")
+
+/** Oltre questo scarto fra due messaggi mostriamo un separatore orario. */
+private const val TIME_GAP_SECONDS = 30 * 60
 
 @Composable
 fun ChatScreen(
@@ -63,8 +67,6 @@ fun ChatScreen(
     val spacing = LocalTedSpacing.current
     val transformationSpec = rememberTransformationSpec()
 
-    // Su una chat si guarda il fondo, non l'inizio. anchorKey vale 0 dopo un
-    // "Carica altri", cosi non strappiamo via lo scroll a chi sta leggendo indietro.
     LaunchedEffect(anchorKey, messages.size) {
         if (anchorKey == 0L || messages.isEmpty()) return@LaunchedEffect
         val header = 1 + if (canLoadMore) 1 else 0
@@ -100,9 +102,7 @@ fun ChatScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             item(key = "header") {
-                ListHeader(
-                    transformation = SurfaceTransformation(transformationSpec)
-                ) {
+                ListHeader(transformation = SurfaceTransformation(transformationSpec)) {
                     Text(title, maxLines = 1)
                 }
             }
@@ -121,9 +121,11 @@ fun ChatScreen(
             if (messages.isEmpty()) {
                 item(key = "empty") {
                     Text(
-                        "Nessun messaggio",
+                        text = "Nessun messaggio",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
@@ -132,9 +134,30 @@ fun ChatScreen(
                 count = messages.size,
                 key = { index -> messages[index].messageId }
             ) { index ->
-                MessageBubble(
-                    message = messages[index],
+                val message = messages[index]
+                val previous = messages.getOrNull(index - 1)
+                val next = messages.getOrNull(index + 1)
+
+                // Il nome compare solo quando cambia interlocutore: in una
+                // conversazione fitta ripeterlo a ogni riga e solo rumore.
+                val showSender = !message.outgoing &&
+                    message.sender.isNotBlank() &&
+                    (previous == null || previous.outgoing || previous.sender != message.sender)
+
+                // L'ora solo in fondo a un gruppo, non su ogni bolla.
+                val showTime = next == null ||
+                    next.outgoing != message.outgoing ||
+                    next.date - message.date > TIME_GAP_SECONDS
+
+                val gapBefore = previous != null &&
+                    message.date - previous.date > TIME_GAP_SECONDS
+
+                MessageBlock(
+                    message = message,
                     now = now,
+                    showSender = showSender,
+                    showTime = showTime,
+                    separator = gapBefore,
                     loadImage = loadImage,
                     onPlayVoice = onPlayVoice,
                     playingId = playingId,
@@ -147,27 +170,31 @@ fun ChatScreen(
                     onClick = onRecord,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Vocale", maxLines = 1)
+                    Text("Messaggio vocale", maxLines = 1)
                 }
             }
 
-            item(key = "quick") {
-                QuickReplies(onSend = onSend)
+            // Una per riga, a tutta larghezza: su uno schermo tondo due colonne
+            // finiscono sotto la curvatura e il testo si taglia.
+            items(
+                count = QUICK_REPLIES.size,
+                key = { index -> "quick-${QUICK_REPLIES[index]}" }
+            ) { index ->
+                val reply = QUICK_REPLIES[index]
+                CompactButton(
+                    onClick = { onSend(reply) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(reply, maxLines = 1)
+                }
             }
         }
     }
 }
 
-/**
- * Apre l'input di sistema di Wear OS: dettatura, tastiera, scrittura a mano
- * ed emoji in un colpo solo. Costruiamo l'intent a mano invece di usare
- * RemoteInputIntentHelper, la cui superficie API cambia fra le versioni.
- */
 private fun buildInputIntent(): Intent {
     val inputs = arrayOf(
-        RemoteInput.Builder(KEY_REPLY)
-            .setLabel("Rispondi")
-            .build()
+        RemoteInput.Builder(KEY_REPLY).setLabel("Rispondi").build()
     )
     return Intent(ACTION_REMOTE_INPUT).apply {
         putExtra(EXTRA_REMOTE_INPUTS, inputs)
@@ -178,89 +205,89 @@ private const val ACTION_REMOTE_INPUT = "android.support.wearable.input.action.R
 private const val EXTRA_REMOTE_INPUTS = "android.support.wearable.input.extra.REMOTE_INPUTS"
 
 @Composable
-private fun QuickReplies(onSend: (String) -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        QUICK_REPLIES.chunked(2).forEach { row ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                row.forEach { reply ->
-                    CompactButton(
-                        onClick = { onSend(reply) },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(reply, maxLines = 1)
-                    }
-                }
-                if (row.size == 1) {
-                    Box(modifier = Modifier.weight(1f))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun MessageBubble(
+private fun MessageBlock(
     message: ChatMessage,
     now: Long,
+    showSender: Boolean,
+    showTime: Boolean,
+    separator: Boolean,
     loadImage: suspend (String) -> ImageBitmap?,
     onPlayVoice: (Long) -> Unit,
     playingId: Long?,
     modifier: Modifier = Modifier
 ) {
     val outgoing = message.outgoing
-    val background = if (outgoing) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        MaterialTheme.colorScheme.surfaceContainer
-    }
-    val foreground = if (outgoing) {
-        MaterialTheme.colorScheme.onPrimaryContainer
-    } else {
-        MaterialTheme.colorScheme.onSurface
-    }
 
     Column(
         modifier = modifier.fillMaxWidth(),
         horizontalAlignment = if (outgoing) Alignment.End else Alignment.Start
     ) {
+        if (separator) {
+            Text(
+                text = relativeTime(message.date, now),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 4.dp)
+            )
+        }
+
+        if (showSender) {
+            Text(
+                text = message.sender,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                modifier = Modifier.padding(start = 10.dp, bottom = 2.dp)
+            )
+        }
+
         Box(
             modifier = Modifier
-                .fillMaxWidth(0.88f)
-                .clip(RoundedCornerShape(14.dp))
-                .background(background)
-                .padding(horizontal = 10.dp, vertical = LocalTedSpacing.current.bubblePadding)
-        ) {
-            Column {
-                if (!outgoing && message.sender.isNotBlank()) {
-                    Text(
-                        text = message.sender,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        maxLines = 1
-                    )
-                }
-                BubbleContent(
-                    message = message,
-                    color = foreground,
-                    loadImage = loadImage,
-                    onPlayVoice = onPlayVoice,
-                    playingId = playingId
+                .fillMaxWidth(if (outgoing) 0.80f else 0.88f)
+                .clip(bubbleShape(outgoing))
+                .background(
+                    if (outgoing) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainer
+                    }
                 )
-            }
+                .padding(horizontal = 11.dp, vertical = LocalTedSpacing.current.bubblePadding)
+        ) {
+            BubbleContent(
+                message = message,
+                color = if (outgoing) {
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
+                loadImage = loadImage,
+                onPlayVoice = onPlayVoice,
+                playingId = playingId
+            )
         }
-        Text(
-            text = relativeTime(message.date, now),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 6.dp)
-        )
+
+        if (showTime) {
+            Text(
+                text = relativeTime(message.date, now),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 1.dp)
+            )
+        }
     }
+}
+
+/** Angolo raccolto dal lato del mittente: dice chi parla prima del colore. */
+private fun bubbleShape(outgoing: Boolean) = if (outgoing) {
+    RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 16.dp, bottomEnd = 5.dp)
+} else {
+    RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 5.dp, bottomEnd = 16.dp)
 }
 
 @Composable
@@ -272,9 +299,10 @@ private fun BubbleContent(
     playingId: Long?
 ) {
     when (val content = message.content) {
+        // Il corpo del messaggio e l'elemento piu grande: e quello che leggi.
         is MessageContent.Text -> Text(
             text = content.text,
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
             color = color
         )
 
@@ -295,7 +323,7 @@ private fun BubbleContent(
             } else {
                 Text(
                     text = "Foto...",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = color
                 )
             }
@@ -326,14 +354,15 @@ private fun BubbleContent(
 
         is MessageContent.Sticker -> Text(
             text = content.emoji,
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.displaySmall,
             color = color
         )
 
         is MessageContent.Unsupported -> Text(
             text = content.label,
-            style = MaterialTheme.typography.bodySmall,
-            color = color
+            style = MaterialTheme.typography.bodyMedium,
+            color = color,
+            fontWeight = FontWeight.Light
         )
     }
 }
