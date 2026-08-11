@@ -6,6 +6,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -28,6 +30,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
+import androidx.wear.compose.material3.Button
+import androidx.wear.compose.material3.ButtonDefaults
 import androidx.wear.compose.material3.CompactButton
 import androidx.wear.compose.material3.EdgeButton
 import androidx.wear.compose.material3.EdgeButtonSize
@@ -174,21 +178,58 @@ fun ChatScreen(
                 }
             }
 
-            // Una per riga, a tutta larghezza: su uno schermo tondo due colonne
-            // finiscono sotto la curvatura e il testo si taglia.
+            // Gruppo connesso: angoli esterni ampi, interni quasi vivi.
+            // Si leggono come un blocco unico invece che come quattro pulsanti
+            // sparsi, ed e il trattamento che Wear usa per le liste di azioni.
             items(
                 count = QUICK_REPLIES.size,
                 key = { index -> "quick-${QUICK_REPLIES[index]}" }
             ) { index ->
-                val reply = QUICK_REPLIES[index]
-                CompactButton(
-                    onClick = { onSend(reply) },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(reply, maxLines = 1)
-                }
+                QuickReply(
+                    text = QUICK_REPLIES[index],
+                    first = index == 0,
+                    last = index == QUICK_REPLIES.lastIndex,
+                    onClick = { onSend(QUICK_REPLIES[index]) }
+                )
             }
         }
+    }
+}
+
+/**
+ * Un elemento del gruppo connesso. La forma dipende dalla posizione:
+ * il raggio ampio va solo sui bordi esterni del blocco.
+ */
+@Composable
+private fun QuickReply(
+    text: String,
+    first: Boolean,
+    last: Boolean,
+    onClick: () -> Unit
+) {
+    val outer = 22.dp
+    val inner = 6.dp
+    val interactionSource = remember { MutableInteractionSource() }
+
+    Button(
+        onClick = onClick,
+        interactionSource = interactionSource,
+        colors = ButtonDefaults.filledTonalButtonColors(),
+        shape = RoundedCornerShape(
+            topStart = if (first) outer else inner,
+            topEnd = if (first) outer else inner,
+            bottomStart = if (last) outer else inner,
+            bottomEnd = if (last) outer else inner
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 1.dp)
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            maxLines = 1
+        )
     }
 }
 

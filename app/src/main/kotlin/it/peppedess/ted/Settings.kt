@@ -37,7 +37,7 @@ object Settings {
             alerts = store.getBoolean(KEY_ALERTS, false),
             fontScale = store.getFloat(KEY_FONT, 1f),
             density = store.getInt(KEY_DENSITY, 1),
-            dynamicColors = store.getBoolean(KEY_DYNAMIC, false),
+            dynamicColors = store.getBoolean(KEY_DYNAMIC, true),
             revision = store.getLong(KEY_REVISION, 0L)
         )
         loaded = true

@@ -54,7 +54,7 @@ fun SettingsScreen(
 
         SettingRow(
             title = "Colori dal quadrante",
-            subtitle = "Segue il watch face invece della palette di Ted."
+            subtitle = "Spegnilo per usare la palette fissa di Ted."
         ) {
             Switch(
                 checked = prefs.dynamicColors,

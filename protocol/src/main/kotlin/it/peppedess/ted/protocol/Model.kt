@@ -148,6 +148,6 @@ data class Preferences(
     val fontScale: Float = 1f,
     /** 0 compatta, 1 normale, 2 ariosa. */
     val density: Int = 1,
-    val dynamicColors: Boolean = false,
+    val dynamicColors: Boolean = true,
     val revision: Long = 0
 )

@@ -14,11 +14,8 @@ import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.dynamicColorScheme
 
 /**
- * Palette ispirata al tema scuro di Telegram.
- *
- * E il default perche su un'app di messaggistica l'identita conta piu della
- * coerenza col quadrante. Chi preferisce il contrario lo accende dalle
- * impostazioni sul telefono.
+ * Palette di ripiego, usata quando il quadrante non espone colori dinamici.
+ * Il default e seguire il watch face.
  */
 private val TedColors = ColorScheme(
     primary = Color(0xFF3EAEE8),
@@ -66,7 +63,7 @@ private fun spacingFor(density: Int): TedSpacing = when (density) {
 
 @Composable
 fun TedTheme(
-    dynamicColors: Boolean = false,
+    dynamicColors: Boolean = true,
     fontScale: Float = 1f,
     density: Int = 1,
     content: @Composable () -> Unit
