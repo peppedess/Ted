@@ -13,12 +13,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.material3.Button
+import androidx.wear.compose.material3.Icon
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.ScreenScaffold
 import androidx.wear.compose.material3.Text
+import it.peppedess.ted.wear.R
 
 @Composable
 fun RecordScreen(
@@ -81,7 +84,12 @@ fun RecordScreen(
                 onClick = onToggle,
                 modifier = Modifier.padding(top = 16.dp)
             ) {
-                Text(if (recording) "Invia" else "Registra", maxLines = 1)
+                Icon(
+                    painter = painterResource(
+                        if (recording) R.drawable.ic_ted_send else R.drawable.ic_ted_mic
+                    ),
+                    contentDescription = if (recording) "Invia" else "Registra"
+                )
             }
         }
     }

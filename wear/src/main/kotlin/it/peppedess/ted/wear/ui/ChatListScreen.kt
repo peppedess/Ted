@@ -13,15 +13,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -31,7 +33,9 @@ import androidx.wear.compose.material3.Card
 import androidx.wear.compose.material3.CardDefaults
 import androidx.wear.compose.material3.EdgeButton
 import androidx.wear.compose.material3.EdgeButtonSize
+import androidx.wear.compose.material3.Icon
 import androidx.wear.compose.material3.ListHeader
+import androidx.wear.compose.material3.LocalContentColor
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.ScreenScaffold
 import androidx.wear.compose.material3.SurfaceTransformation
@@ -39,6 +43,7 @@ import androidx.wear.compose.material3.Text
 import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
 import it.peppedess.ted.protocol.ChatSummary
+import it.peppedess.ted.wear.R
 import kotlin.math.absoluteValue
 
 @Composable
@@ -51,9 +56,6 @@ fun ChatListScreen(
 ) {
     val listState = rememberTransformingLazyColumnState()
     val spacing = LocalTedSpacing.current
-
-    // Le card si scalano e sbiadiscono avvicinandosi ai bordi curvi:
-    // e la firma visiva dell'Expressive su Wear.
     val transformationSpec = rememberTransformationSpec()
 
     ScreenScaffold(
@@ -63,7 +65,10 @@ fun ChatListScreen(
                 onClick = onNewChat,
                 buttonSize = EdgeButtonSize.Medium
             ) {
-                Text("Nuova chat", maxLines = 1)
+                Icon(
+                    painter = painterResource(R.drawable.ic_ted_person_add),
+                    contentDescription = "Nuova chat"
+                )
             }
         }
     ) { contentPadding ->
@@ -74,11 +79,7 @@ fun ChatListScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             item(key = "header") {
-                ListHeader(
-                    transformation = SurfaceTransformation(transformationSpec)
-                ) {
-                    Text("Chat")
-                }
+                ListHeader { Text("Chat") }
             }
 
             items(
@@ -90,6 +91,7 @@ fun ChatListScreen(
                     chat = chat,
                     now = now,
                     loadAvatar = loadAvatar,
+                    // Dipende dallo scope dell'item, quindi va costruita qui.
                     transformation = SurfaceTransformation(transformationSpec),
                     modifier = Modifier.transformedHeight(this, transformationSpec),
                     onClick = { onChatClick(chat.chatId) }
@@ -250,9 +252,7 @@ private fun UnreadDot(
             .background(background),
         contentAlignment = Alignment.Center
     ) {
-        androidx.compose.runtime.CompositionLocalProvider(
-            androidx.wear.compose.material3.LocalContentColor provides foreground
-        ) {
+        CompositionLocalProvider(LocalContentColor provides foreground) {
             AnimatedCount(count = count)
         }
     }

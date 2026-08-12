@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
@@ -35,6 +36,7 @@ import androidx.wear.compose.material3.ButtonDefaults
 import androidx.wear.compose.material3.CompactButton
 import androidx.wear.compose.material3.EdgeButton
 import androidx.wear.compose.material3.EdgeButtonSize
+import androidx.wear.compose.material3.Icon
 import androidx.wear.compose.material3.ListHeader
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.ScreenScaffold
@@ -42,6 +44,7 @@ import androidx.wear.compose.material3.SurfaceTransformation
 import androidx.wear.compose.material3.Text
 import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
+import it.peppedess.ted.wear.R
 import it.peppedess.ted.protocol.ChatMessage
 import it.peppedess.ted.protocol.MessageContent
 
@@ -95,7 +98,10 @@ fun ChatScreen(
                 onClick = { inputLauncher.launch(buildInputIntent()) },
                 buttonSize = EdgeButtonSize.Large
             ) {
-                Text("Rispondi", maxLines = 1)
+                Icon(
+                    painter = painterResource(R.drawable.ic_ted_send),
+                    contentDescription = "Rispondi"
+                )
             }
         }
     ) { contentPadding ->
@@ -106,7 +112,7 @@ fun ChatScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             item(key = "header") {
-                ListHeader(transformation = SurfaceTransformation(transformationSpec)) {
+                ListHeader {
                     Text(title, maxLines = 1)
                 }
             }
@@ -174,7 +180,10 @@ fun ChatScreen(
                     onClick = onRecord,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Messaggio vocale", maxLines = 1)
+                    Icon(
+                        painter = painterResource(R.drawable.ic_ted_mic),
+                        contentDescription = "Registra un messaggio vocale"
+                    )
                 }
             }
 
@@ -382,7 +391,10 @@ private fun BubbleContent(
             val loading = playingId == message.messageId
             Row(verticalAlignment = Alignment.CenterVertically) {
                 CompactButton(onClick = { onPlayVoice(message.messageId) }) {
-                    Text(if (loading) "..." else "Ascolta", maxLines = 1)
+                    Icon(
+                        painter = painterResource(R.drawable.ic_ted_play),
+                        contentDescription = "Ascolta"
+                    )
                 }
                 Text(
                     text = "${content.seconds}s",

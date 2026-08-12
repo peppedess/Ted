@@ -14,14 +14,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.material3.Button
 import androidx.wear.compose.material3.CircularProgressIndicator
 import androidx.wear.compose.material3.CompactButton
+import androidx.wear.compose.material3.Icon
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.ScreenScaffold
 import androidx.wear.compose.material3.Text
+import it.peppedess.ted.wear.R
 import it.peppedess.ted.wear.data.VoicePlayer
 
 @Composable
@@ -88,13 +91,25 @@ fun VoicePlayerScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         CompactButton(onClick = { onSeekBy(-5000) }) {
-                            Text("-5", maxLines = 1)
+                            Icon(
+                                painter = painterResource(R.drawable.ic_ted_prev),
+                                contentDescription = "Indietro di 5 secondi"
+                            )
                         }
                         Button(onClick = onTogglePlay) {
-                            Text(if (state.playing) "Pausa" else "Play", maxLines = 1)
+                            Icon(
+                                painter = painterResource(
+                                    if (state.playing) R.drawable.ic_ted_pause
+                                    else R.drawable.ic_ted_play
+                                ),
+                                contentDescription = if (state.playing) "Pausa" else "Riproduci"
+                            )
                         }
                         CompactButton(onClick = { onSeekBy(5000) }) {
-                            Text("+5", maxLines = 1)
+                            Icon(
+                                painter = painterResource(R.drawable.ic_ted_next),
+                                contentDescription = "Avanti di 5 secondi"
+                            )
                         }
                     }
 
@@ -104,7 +119,10 @@ fun VoicePlayerScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         CompactButton(onClick = { onVolumeChange(volume - 1) }) {
-                            Text("-", maxLines = 1)
+                            Icon(
+                                painter = painterResource(R.drawable.ic_ted_vol_down),
+                                contentDescription = "Abbassa il volume"
+                            )
                         }
                         Text(
                             text = if (volumeMax > 0) "${volume * 100 / volumeMax}%" else "--",
@@ -112,7 +130,10 @@ fun VoicePlayerScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         CompactButton(onClick = { onVolumeChange(volume + 1) }) {
-                            Text("+", maxLines = 1)
+                            Icon(
+                                painter = painterResource(R.drawable.ic_ted_vol_up),
+                                contentDescription = "Alza il volume"
+                            )
                         }
                     }
                 }
