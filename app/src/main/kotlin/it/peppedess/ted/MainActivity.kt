@@ -21,6 +21,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import it.peppedess.ted.bridge.WearBridge
 import it.peppedess.ted.protocol.MessageAlert
@@ -51,6 +52,11 @@ private fun PhoneRoot() {
     val prefs by Settings.prefs.collectAsState()
 
     var showSettings by remember { mutableStateOf(false) }
+
+    // Risolte qui: dentro la lambda del click non c'e piu il contesto composable.
+    val appName = stringResource(R.string.app_name)
+    val testTitle = stringResource(R.string.test_title)
+    val testBody = stringResource(R.string.test_body)
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -97,9 +103,9 @@ private fun PhoneRoot() {
                             bridge.sendAlert(
                                 MessageAlert(
                                     chatId = 1L,
-                                    chatTitle = getString(R.string.test_title),
-                                    sender = getString(R.string.app_name),
-                                    preview = getString(R.string.test_body),
+                                    chatTitle = testTitle,
+                                    sender = appName,
+                                    preview = testBody,
                                     messageId = System.currentTimeMillis(),
                                     date = System.currentTimeMillis() / 1000
                                 )
