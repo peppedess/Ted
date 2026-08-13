@@ -1,0 +1,32 @@
+# Profilo scritto a mano: elenca i percorsi caldi dell'avvio e del primo
+# scroll, cosi ART li compila in anticipo invece di interpretarli.
+# Un profilo generato da esecuzione reale renderebbe di piu, ma richiede
+# un emulatore e qui non ne abbiamo.
+
+# Avvio
+HSPLit/peppedess/ted/wear/MainActivity;-><init>()V
+HSPLit/peppedess/ted/wear/MainActivity;->onCreate(Landroid/os/Bundle;)V
+HSPLit/peppedess/ted/wear/data/BridgeClient;-><init>(Landroid/content/Context;)V
+HSPLit/peppedess/ted/wear/data/BridgeClient;->chatList()Lkotlinx/coroutines/flow/Flow;
+HSPLit/peppedess/ted/wear/data/BridgeClient;->prefs()Lkotlinx/coroutines/flow/Flow;
+HSPLit/peppedess/ted/wear/data/BridgeClient;->status()Lkotlinx/coroutines/flow/Flow;
+HSPLit/peppedess/ted/wear/data/BridgeClient;->send(Lit/peppedess/ted/protocol/WatchCommand;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+
+# Tema e lista: il primo frame
+HSPLit/peppedess/ted/wear/ui/TedThemeKt;->**(**)**
+HSPLit/peppedess/ted/wear/ui/ChatListScreenKt;->**(**)**
+HSPLit/peppedess/ted/wear/ui/ExpressiveKt;->**(**)**
+
+# Deserializzazione: gira a ogni aggiornamento dal telefono
+HSPLit/peppedess/ted/protocol/TedCodec;->**(**)**
+HSPLit/peppedess/ted/protocol/ChatSummary;-><init>(**)V
+HSPLit/peppedess/ted/protocol/ChatList;-><init>(**)V
+HSPLit/peppedess/ted/protocol/ChatSummary$$serializer;->**(**)**
+HSPLit/peppedess/ted/protocol/ChatList$$serializer;->**(**)**
+HSPLit/peppedess/ted/protocol/Preferences$$serializer;->**(**)**
+
+# Conversazione
+HSPLit/peppedess/ted/wear/ui/ChatScreenKt;->**(**)**
+HSPLit/peppedess/ted/protocol/ChatMessage;-><init>(**)V
+HSPLit/peppedess/ted/protocol/ChatThread;-><init>(**)V
+HSPLit/peppedess/ted/protocol/MessageContent$Text;-><init>(**)V

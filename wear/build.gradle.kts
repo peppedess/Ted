@@ -42,7 +42,13 @@ android {
         }
         debug {
             signingConfig = signingConfigs.getByName("shared")
-            isMinifyEnabled = false
+            // Acceso anche in debug: senza, il debug non somiglia a cio
+            // che finisce sull'orologio, ne per fluidita ne per dimensioni.
+            isMinifyEnabled = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 

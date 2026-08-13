@@ -71,7 +71,7 @@ class AlertListener : WearableListenerService() {
         ).build()
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(it.peppedess.ted.wear.R.drawable.ic_ted_send)
+            .setSmallIcon(it.peppedess.ted.wear.R.drawable.ic_ted_notification)
             .setContentTitle(alert.chatTitle)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))

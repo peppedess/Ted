@@ -1,0 +1,15 @@
+# Percorsi caldi del lato telefono: avvio del servizio e ciclo di sync.
+
+HSPLit/peppedess/ted/TdService;->onCreate()V
+HSPLit/peppedess/ted/TdService;->onStartCommand(Landroid/content/Intent;II)I
+HSPLit/peppedess/ted/tdlib/Td;->get(Landroid/content/Context;)Lit/peppedess/ted/tdlib/TdClient;
+HSPLit/peppedess/ted/tdlib/TdClient;->start()V
+HSPLit/peppedess/ted/tdlib/TdClient;->send(Lorg/drinkless/tdlib/TdApi$Function;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+
+# Mapping: gira per ogni chat a ogni refresh
+HSPLit/peppedess/ted/bridge/ChatMapper;->**(**)**
+HSPLit/peppedess/ted/bridge/MessageMapper;->**(**)**
+HSPLit/peppedess/ted/bridge/ChatRepository;->refresh(Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+HSPLit/peppedess/ted/bridge/WearBridge;->**(**)**
+
+HSPLit/peppedess/ted/protocol/TedCodec;->**(**)**
