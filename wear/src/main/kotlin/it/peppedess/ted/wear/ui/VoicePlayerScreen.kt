@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.material3.Button
 import androidx.wear.compose.material3.CircularProgressIndicator
@@ -63,7 +64,7 @@ fun VoicePlayerScreen(
 
                 state.loading -> {
                     Text(
-                        text = "Scarico dal telefono...",
+                        text = stringResource(R.string.player_downloading),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 12.dp)
@@ -93,7 +94,7 @@ fun VoicePlayerScreen(
                         CompactButton(onClick = { onSeekBy(-5000) }) {
                             Icon(
                                 painter = painterResource(R.drawable.ic_ted_prev),
-                                contentDescription = "Indietro di 5 secondi"
+                                contentDescription = stringResource(R.string.player_back5)
                             )
                         }
                         Button(onClick = onTogglePlay) {
@@ -102,13 +103,13 @@ fun VoicePlayerScreen(
                                     if (state.playing) R.drawable.ic_ted_pause
                                     else R.drawable.ic_ted_play
                                 ),
-                                contentDescription = if (state.playing) "Pausa" else "Riproduci"
+                                contentDescription = stringResource(if (state.playing) R.string.player_pause else R.string.player_play)
                             )
                         }
                         CompactButton(onClick = { onSeekBy(5000) }) {
                             Icon(
                                 painter = painterResource(R.drawable.ic_ted_next),
-                                contentDescription = "Avanti di 5 secondi"
+                                contentDescription = stringResource(R.string.player_fwd5)
                             )
                         }
                     }
@@ -121,7 +122,7 @@ fun VoicePlayerScreen(
                         CompactButton(onClick = { onVolumeChange(volume - 1) }) {
                             Icon(
                                 painter = painterResource(R.drawable.ic_ted_vol_down),
-                                contentDescription = "Abbassa il volume"
+                                contentDescription = stringResource(R.string.player_vol_down)
                             )
                         }
                         Text(
@@ -132,7 +133,7 @@ fun VoicePlayerScreen(
                         CompactButton(onClick = { onVolumeChange(volume + 1) }) {
                             Icon(
                                 painter = painterResource(R.drawable.ic_ted_vol_up),
-                                contentDescription = "Alza il volume"
+                                contentDescription = stringResource(R.string.player_vol_up)
                             )
                         }
                     }

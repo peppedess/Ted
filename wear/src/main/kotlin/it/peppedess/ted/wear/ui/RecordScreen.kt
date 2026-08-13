@@ -15,6 +15,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.material3.Button
 import androidx.wear.compose.material3.Icon
@@ -67,14 +68,14 @@ fun RecordScreen(
             )
 
             Text(
-                text = if (recording) clock(seconds) else "Pronto",
+                text = if (recording) clock(seconds) else stringResource(R.string.rec_ready),
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(top = 10.dp)
             )
 
             if (recording) {
                 Text(
-                    text = "max ${clock(maxSeconds)}",
+                    text = stringResource(R.string.rec_max, clock(maxSeconds)),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -88,7 +89,7 @@ fun RecordScreen(
                     painter = painterResource(
                         if (recording) R.drawable.ic_ted_send else R.drawable.ic_ted_mic
                     ),
-                    contentDescription = if (recording) "Invia" else "Registra"
+                    contentDescription = stringResource(if (recording) R.string.rec_send else R.string.rec_start)
                 )
             }
         }

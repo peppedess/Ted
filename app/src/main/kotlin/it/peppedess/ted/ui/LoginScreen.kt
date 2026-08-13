@@ -23,7 +23,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import it.peppedess.ted.R
 import it.peppedess.ted.tdlib.TdClient
 import kotlinx.coroutines.launch
 
@@ -63,7 +65,7 @@ fun LoginScreen(
         when (stage) {
             is TdClient.Stage.Starting -> {
                 Text(
-                    "Avvio di TDLib...",
+                    stringResource(R.string.starting_tdlib),
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(top = 8.dp)
                 )
@@ -97,7 +99,7 @@ fun LoginScreen(
             )
 
             is TdClient.Stage.LoggedOut -> Text(
-                "Sessione chiusa. Riavvia l'app per accedere di nuovo.",
+                stringResource(R.string.session_closed),
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(top = 12.dp)
@@ -128,7 +130,7 @@ fun LoginScreen(
 private fun PhoneStep(busy: Boolean, onSubmit: (String) -> Unit) {
     var phone by remember { mutableStateOf("+39") }
     Text(
-        "Inserisci il numero in formato internazionale",
+        stringResource(R.string.phone_prompt),
         style = MaterialTheme.typography.bodyMedium,
         textAlign = TextAlign.Center,
         modifier = Modifier.padding(top = 8.dp, bottom = 16.dp)
@@ -136,7 +138,7 @@ private fun PhoneStep(busy: Boolean, onSubmit: (String) -> Unit) {
     OutlinedTextField(
         value = phone,
         onValueChange = { phone = it },
-        label = { Text("Numero") },
+        label = { Text(stringResource(R.string.phone_label)) },
         singleLine = true,
         enabled = !busy,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
@@ -149,7 +151,7 @@ private fun PhoneStep(busy: Boolean, onSubmit: (String) -> Unit) {
             .fillMaxWidth()
             .padding(top = 16.dp)
     ) {
-        Text("Continua")
+        Text(stringResource(R.string.continue_action))
     }
 }
 
@@ -157,7 +159,7 @@ private fun PhoneStep(busy: Boolean, onSubmit: (String) -> Unit) {
 private fun CodeStep(phone: String, busy: Boolean, onSubmit: (String) -> Unit) {
     var code by remember { mutableStateOf("") }
     Text(
-        if (phone.isBlank()) "Codice inviato su Telegram" else "Codice inviato a $phone",
+        if (phone.isBlank()) stringResource(R.string.code_sent_generic) else stringResource(R.string.code_sent_to, phone),
         style = MaterialTheme.typography.bodyMedium,
         textAlign = TextAlign.Center,
         modifier = Modifier.padding(top = 8.dp, bottom = 16.dp)
@@ -165,7 +167,7 @@ private fun CodeStep(phone: String, busy: Boolean, onSubmit: (String) -> Unit) {
     OutlinedTextField(
         value = code,
         onValueChange = { code = it.filter { ch -> ch.isDigit() } },
-        label = { Text("Codice") },
+        label = { Text(stringResource(R.string.code_label)) },
         singleLine = true,
         enabled = !busy,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
@@ -178,7 +180,7 @@ private fun CodeStep(phone: String, busy: Boolean, onSubmit: (String) -> Unit) {
             .fillMaxWidth()
             .padding(top = 16.dp)
     ) {
-        Text("Verifica")
+        Text(stringResource(R.string.verify))
     }
 }
 
@@ -186,7 +188,7 @@ private fun CodeStep(phone: String, busy: Boolean, onSubmit: (String) -> Unit) {
 private fun PasswordStep(hint: String, busy: Boolean, onSubmit: (String) -> Unit) {
     var password by remember { mutableStateOf("") }
     Text(
-        if (hint.isBlank()) "Verifica in due passaggi attiva" else "Suggerimento: $hint",
+        if (hint.isBlank()) stringResource(R.string.two_factor_active) else stringResource(R.string.password_hint, hint),
         style = MaterialTheme.typography.bodyMedium,
         textAlign = TextAlign.Center,
         modifier = Modifier.padding(top = 8.dp, bottom = 16.dp)
@@ -194,7 +196,7 @@ private fun PasswordStep(hint: String, busy: Boolean, onSubmit: (String) -> Unit
     OutlinedTextField(
         value = password,
         onValueChange = { password = it },
-        label = { Text("Password") },
+        label = { Text(stringResource(R.string.password_label)) },
         singleLine = true,
         enabled = !busy,
         visualTransformation = PasswordVisualTransformation(),
@@ -208,7 +210,7 @@ private fun PasswordStep(hint: String, busy: Boolean, onSubmit: (String) -> Unit
             .fillMaxWidth()
             .padding(top = 16.dp)
     ) {
-        Text("Accedi")
+        Text(stringResource(R.string.sign_in))
     }
 }
 
@@ -222,13 +224,13 @@ private fun ReadyStep(
     onLogout: () -> Unit
 ) {
     Text(
-        "Connesso a Telegram",
+        stringResource(R.string.connected),
         style = MaterialTheme.typography.titleMedium,
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(top = 8.dp)
     )
     Text(
-        if (bridgeRunning) "Ponte attivo. Puoi chiudere l'app." else "Il ponte non e ancora avviato.",
+        stringResource(if (bridgeRunning) R.string.bridge_active else R.string.bridge_inactive),
         style = MaterialTheme.typography.bodySmall,
         textAlign = TextAlign.Center,
         modifier = Modifier.padding(top = 8.dp)
@@ -239,18 +241,18 @@ private fun ReadyStep(
             .fillMaxWidth()
             .padding(top = 24.dp)
     ) {
-        Text(if (bridgeRunning) "Ferma il ponte" else "Avvia il ponte")
+        Text(stringResource(if (bridgeRunning) R.string.bridge_stop else R.string.bridge_start))
     }
     TextButton(
         onClick = onOpenSettings,
         modifier = Modifier.padding(top = 8.dp)
     ) {
-        Text("Impostazioni")
+        Text(stringResource(R.string.settings))
     }
     TextButton(onClick = onTestAlert) {
-        Text("Prova notifica")
+        Text(stringResource(R.string.test_notification))
     }
     TextButton(onClick = onLogout) {
-        Text("Disconnetti")
+        Text(stringResource(R.string.sign_out))
     }
 }

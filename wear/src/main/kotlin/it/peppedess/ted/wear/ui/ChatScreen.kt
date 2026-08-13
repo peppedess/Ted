@@ -28,6 +28,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
@@ -100,7 +101,7 @@ fun ChatScreen(
             ) {
                 Icon(
                     painter = painterResource(R.drawable.ic_ted_send),
-                    contentDescription = "Rispondi"
+                    contentDescription = stringResource(R.string.reply)
                 )
             }
         }
@@ -123,7 +124,7 @@ fun ChatScreen(
                         onClick = onLoadMore,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Carica altri", maxLines = 1)
+                        Text(stringResource(R.string.load_more), maxLines = 1)
                     }
                 }
             }
@@ -131,7 +132,7 @@ fun ChatScreen(
             if (messages.isEmpty()) {
                 item(key = "empty") {
                     Text(
-                        text = "Nessun messaggio",
+                        text = stringResource(R.string.no_messages),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
@@ -182,7 +183,7 @@ fun ChatScreen(
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.ic_ted_mic),
-                        contentDescription = "Registra un messaggio vocale"
+                        contentDescription = stringResource(R.string.record_voice)
                     )
                 }
             }
@@ -364,7 +365,7 @@ private fun BubbleContent(
             if (image != null) {
                 Image(
                     bitmap = image,
-                    contentDescription = content.caption.ifBlank { "Foto" },
+                    contentDescription = content.caption.ifBlank { stringResource(R.string.photo) },
                     contentScale = ContentScale.FillWidth,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -372,7 +373,7 @@ private fun BubbleContent(
                 )
             } else {
                 Text(
-                    text = "Foto...",
+                    text = stringResource(R.string.photo_loading),
                     style = MaterialTheme.typography.bodyMedium,
                     color = color
                 )
@@ -393,11 +394,11 @@ private fun BubbleContent(
                 CompactButton(onClick = { onPlayVoice(message.messageId) }) {
                     Icon(
                         painter = painterResource(R.drawable.ic_ted_play),
-                        contentDescription = "Ascolta"
+                        contentDescription = stringResource(R.string.listen)
                     )
                 }
                 Text(
-                    text = "${content.seconds}s",
+                    text = stringResource(R.string.duration_seconds, content.seconds),
                     style = MaterialTheme.typography.labelSmall,
                     color = color,
                     modifier = Modifier.padding(start = 6.dp)

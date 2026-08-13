@@ -97,9 +97,9 @@ private fun PhoneRoot() {
                             bridge.sendAlert(
                                 MessageAlert(
                                     chatId = 1L,
-                                    chatTitle = "Prova",
-                                    sender = "Ted",
-                                    preview = "Se leggi questo, il ponte funziona",
+                                    chatTitle = getString(R.string.test_title),
+                                    sender = getString(R.string.app_name),
+                                    preview = getString(R.string.test_body),
                                     messageId = System.currentTimeMillis(),
                                     date = System.currentTimeMillis() / 1000
                                 )

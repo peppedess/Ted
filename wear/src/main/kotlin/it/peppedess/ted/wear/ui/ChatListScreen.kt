@@ -26,6 +26,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
@@ -67,7 +68,7 @@ fun ChatListScreen(
             ) {
                 Icon(
                     painter = painterResource(R.drawable.ic_ted_person_add),
-                    contentDescription = "Nuova chat"
+                    contentDescription = stringResource(R.string.new_chat)
                 )
             }
         }
@@ -79,7 +80,7 @@ fun ChatListScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             item(key = "header") {
-                ListHeader { Text("Chat") }
+                ListHeader { Text(stringResource(R.string.chats_title)) }
             }
 
             items(

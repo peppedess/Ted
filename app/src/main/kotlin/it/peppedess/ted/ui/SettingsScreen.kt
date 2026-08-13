@@ -19,7 +19,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import it.peppedess.ted.R
 import it.peppedess.ted.protocol.Preferences
 import kotlin.math.roundToInt
 
@@ -36,11 +38,11 @@ fun SettingsScreen(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
-        Text("Impostazioni", style = MaterialTheme.typography.headlineSmall)
+        Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.headlineSmall)
 
         SettingRow(
-            title = "Notifiche sull'orologio",
-            subtitle = "Tiene il ponte sempre acceso: consuma piu batteria."
+            title = stringResource(R.string.settings_alerts),
+            subtitle = stringResource(R.string.settings_alerts_desc)
         ) {
             Switch(
                 checked = prefs.alerts,
@@ -50,11 +52,11 @@ fun SettingsScreen(
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
 
-        Text("Aspetto sull'orologio", style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.settings_appearance), style = MaterialTheme.typography.titleMedium)
 
         SettingRow(
-            title = "Colori dal quadrante",
-            subtitle = "Spegnilo per usare la palette fissa di Ted."
+            title = stringResource(R.string.settings_dynamic),
+            subtitle = stringResource(R.string.settings_dynamic_desc)
         ) {
             Switch(
                 checked = prefs.dynamicColors,
@@ -63,7 +65,7 @@ fun SettingsScreen(
         }
 
         Text(
-            "Dimensione testo: ${(prefs.fontScale * 100).roundToInt()}%",
+            stringResource(R.string.settings_text_size, (prefs.fontScale * 100).roundToInt()),
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(top = 16.dp)
         )
@@ -79,12 +81,12 @@ fun SettingsScreen(
         )
 
         Text(
-            "Spaziatura delle bolle",
+            stringResource(R.string.settings_density),
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("Compatta", "Normale", "Ariosa").forEachIndexed { index, label ->
+            listOf(stringResource(R.string.density_compact), stringResource(R.string.density_normal), stringResource(R.string.density_airy)).forEachIndexed { index, label ->
                 FilterChip(
                     selected = prefs.density == index,
                     onClick = { onChange { it.copy(density = index) } },
@@ -96,7 +98,7 @@ fun SettingsScreen(
         HorizontalDivider(modifier = Modifier.padding(vertical = 20.dp))
 
         Button(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
-            Text("Fatto")
+            Text(stringResource(R.string.done))
         }
 
         TextButton(
@@ -105,7 +107,7 @@ fun SettingsScreen(
                 .fillMaxWidth()
                 .padding(top = 4.dp)
         ) {
-            Text("Ripristina i valori predefiniti")
+            Text(stringResource(R.string.reset_defaults))
         }
     }
 }

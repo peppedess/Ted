@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
@@ -23,6 +24,7 @@ import androidx.wear.compose.material3.ListHeader
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.ScreenScaffold
 import androidx.wear.compose.material3.Text
+import it.peppedess.ted.wear.R
 import it.peppedess.ted.protocol.ChatSummary
 
 private const val KEY_QUERY = "ted_query"
@@ -57,7 +59,7 @@ fun SearchScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             item(key = "header") {
-                ListHeader { Text("Nuova chat") }
+                ListHeader { Text(stringResource(R.string.new_chat)) }
             }
 
             item(key = "input") {
@@ -66,7 +68,7 @@ fun SearchScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = query.ifBlank { "Cerca un nome" },
+                        text = query.ifBlank { stringResource(R.string.search_hint) },
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -82,7 +84,7 @@ fun SearchScreen(
             if (!searching && query.isNotBlank() && results.isEmpty()) {
                 item(key = "empty") {
                     Text(
-                        text = "Nessun risultato",
+                        text = stringResource(R.string.search_empty),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,

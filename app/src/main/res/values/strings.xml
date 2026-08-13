@@ -1,4 +1,57 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Ted</string>
+
+    <!-- Accesso -->
+    <string name="starting_tdlib">Avvio di TDLib…</string>
+    <string name="phone_prompt">Inserisci il numero in formato internazionale</string>
+    <string name="phone_label">Numero</string>
+    <string name="continue_action">Continua</string>
+    <string name="code_sent_generic">Codice inviato su Telegram</string>
+    <string name="code_sent_to">Codice inviato a %1$s</string>
+    <string name="code_label">Codice</string>
+    <string name="verify">Verifica</string>
+    <string name="two_factor_active">Verifica in due passaggi attiva</string>
+    <string name="password_hint">Suggerimento: %1$s</string>
+    <string name="password_label">Password</string>
+    <string name="sign_in">Accedi</string>
+    <string name="session_closed">Sessione chiusa. Riavvia l\'app per accedere di nuovo.</string>
+
+    <!-- Ponte -->
+    <string name="connected">Connesso a Telegram</string>
+    <string name="bridge_active">Ponte attivo. Puoi chiudere l\'app.</string>
+    <string name="bridge_inactive">Il ponte non è ancora avviato.</string>
+    <string name="bridge_start">Avvia il ponte</string>
+    <string name="bridge_stop">Ferma il ponte</string>
+    <string name="settings">Impostazioni</string>
+    <string name="test_notification">Prova notifica</string>
+    <string name="sign_out">Disconnetti</string>
+
+    <!-- Impostazioni -->
+    <string name="settings_title">Impostazioni</string>
+    <string name="settings_alerts">Notifiche sull\'orologio</string>
+    <string name="settings_alerts_desc">Tiene il ponte sempre acceso: consuma più batteria.</string>
+    <string name="settings_appearance">Aspetto sull\'orologio</string>
+    <string name="settings_dynamic">Colori dal quadrante</string>
+    <string name="settings_dynamic_desc">Spegnilo per usare la palette fissa di Ted.</string>
+    <string name="settings_text_size">Dimensione testo: %1$d%%</string>
+    <string name="settings_density">Spaziatura delle bolle</string>
+    <string name="density_compact">Compatta</string>
+    <string name="density_normal">Normale</string>
+    <string name="density_airy">Ariosa</string>
+    <string name="done">Fatto</string>
+    <string name="reset_defaults">Ripristina i valori predefiniti</string>
+
+    <!-- Servizio -->
+    <string name="service_channel">Ponte Telegram</string>
+    <string name="service_channel_desc">Mantiene attiva la connessione verso l\'orologio</string>
+    <string name="service_starting">Avvio…</string>
+    <string name="service_connected">Connesso</string>
+    <string name="service_disconnected">Disconnesso</string>
+    <string name="service_waiting_login">In attesa di accesso</string>
+    <string name="service_error">Errore: %1$s</string>
+
+    <!-- Prova -->
+    <string name="test_title">Prova</string>
+    <string name="test_body">Se leggi questo, il ponte funziona</string>
 </resources>

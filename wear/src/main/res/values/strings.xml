@@ -1,4 +1,73 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Ted</string>
+
+    <!-- Lista chat -->
+    <string name="chats_title">Chat</string>
+    <string name="new_chat">Nuova chat</string>
+
+    <!-- Stati del ponte -->
+    <string name="state_syncing">Sincronizzazione…</string>
+    <string name="state_phone_unreachable">Telefono non raggiungibile</string>
+    <string name="state_login_required">Accedi a Telegram dal telefono</string>
+    <string name="state_bridge_off">Ponte spento sul telefono</string>
+    <string name="state_phone_error">Errore sul telefono</string>
+    <string name="state_no_chats">Nessuna chat</string>
+    <string name="state_loading">Caricamento…</string>
+    <string name="state_invalid_chat">Chat non valida</string>
+    <string name="state_invalid_voice">Vocale non valido</string>
+
+    <!-- Conversazione -->
+    <string name="no_messages">Nessun messaggio</string>
+    <string name="load_more">Carica altri</string>
+    <string name="reply">Rispondi</string>
+    <string name="record_voice">Registra un messaggio vocale</string>
+    <string name="listen">Ascolta</string>
+    <string name="photo_loading">Foto…</string>
+    <string name="photo">Foto</string>
+
+    <!-- Risposte rapide -->
+    <string name="quick_ok">Ok</string>
+    <string name="quick_coming">Arrivo</string>
+    <string name="quick_call_back">Ti richiamo</string>
+    <string name="quick_thanks">Grazie</string>
+
+    <!-- Ricerca -->
+    <string name="search_hint">Cerca un nome</string>
+    <string name="search_label">Cerca</string>
+    <string name="search_empty">Nessun risultato</string>
+
+    <!-- Registrazione -->
+    <string name="rec_ready">Pronto</string>
+    <string name="rec_max">max %1$s</string>
+    <string name="rec_send">Invia</string>
+    <string name="rec_start">Registra</string>
+    <string name="rec_no_mic">Microfono non disponibile</string>
+    <string name="rec_no_permission">Permesso microfono negato</string>
+    <string name="rec_too_short">Registrazione troppo breve</string>
+
+    <!-- Riproduzione -->
+    <string name="player_title">Messaggio vocale</string>
+    <string name="player_downloading">Scarico dal telefono…</string>
+    <string name="player_no_file">File non scrivibile</string>
+    <string name="player_bad_format">Formato non riproducibile</string>
+    <string name="player_interrupted">Riproduzione interrotta</string>
+    <string name="player_play">Riproduci</string>
+    <string name="player_pause">Pausa</string>
+    <string name="player_back5">Indietro di 5 secondi</string>
+    <string name="player_fwd5">Avanti di 5 secondi</string>
+    <string name="player_vol_up">Alza il volume</string>
+    <string name="player_vol_down">Abbassa il volume</string>
+
+    <!-- Notifiche -->
+    <string name="notif_channel_messages">Messaggi</string>
+    <string name="notif_channel_messages_desc">Nuovi messaggi Telegram</string>
+
+    <!-- Tempo relativo -->
+    <string name="time_now">ora</string>
+    <string name="time_minutes">%1$dm</string>
+    <string name="time_hours">%1$dh</string>
+    <string name="time_days">%1$dg</string>
+    <string name="time_weeks">%1$dsett</string>
+    <string name="duration_seconds">%1$ds</string>
 </resources>

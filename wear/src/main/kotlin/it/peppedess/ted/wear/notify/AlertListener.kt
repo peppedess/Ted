@@ -14,6 +14,7 @@ import it.peppedess.ted.protocol.MessageAlert
 import it.peppedess.ted.protocol.TedCodec
 import it.peppedess.ted.protocol.TedPaths
 import it.peppedess.ted.wear.MainActivity
+import it.peppedess.ted.wear.R
 
 /**
  * Riceve gli avvisi dal telefono e li trasforma in notifiche locali.
@@ -61,11 +62,11 @@ class AlertListener : WearableListenerService() {
         )
         val replyAction = NotificationCompat.Action.Builder(
             it.peppedess.ted.wear.R.drawable.ic_ted_send,
-            "Rispondi",
+            getString(R.string.reply),
             replyPending
         ).addRemoteInput(
             RemoteInput.Builder(ReplyReceiver.KEY_REPLY)
-                .setLabel("Rispondi")
+                .setLabel(getString(R.string.reply))
                 .build()
         ).build()
 
@@ -90,10 +91,10 @@ class AlertListener : WearableListenerService() {
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Messaggi",
+            getString(R.string.notif_channel_messages),
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
-            description = "Nuovi messaggi Telegram"
+            description = getString(R.string.notif_channel_messages_desc)
             enableVibration(true)
         }
         manager.createNotificationChannel(channel)

@@ -46,7 +46,7 @@ class TdService : LifecycleService() {
         Settings.load(this)
         _running.value = true
         createChannel()
-        startForeground(NOTIFICATION_ID, buildNotification("Avvio..."))
+        startForeground(NOTIFICATION_ID, buildNotification(getString(R.string.service_starting)))
 
         td = Td.get(this)
         bridge = WearBridge(this)
@@ -56,11 +56,11 @@ class TdService : LifecycleService() {
         lifecycleScope.launch {
             td.stage.collectLatest { stage ->
                 val text = when (stage) {
-                    is TdClient.Stage.Ready -> "Connesso"
-                    is TdClient.Stage.Starting -> "Avvio..."
-                    is TdClient.Stage.Failed -> "Errore: ${stage.message}"
-                    is TdClient.Stage.LoggedOut -> "Disconnesso"
-                    else -> "In attesa di accesso"
+                    is TdClient.Stage.Ready -> getString(R.string.service_connected)
+                    is TdClient.Stage.Starting -> getString(R.string.service_starting)
+                    is TdClient.Stage.Failed -> getString(R.string.service_error, stage.message)
+                    is TdClient.Stage.LoggedOut -> getString(R.string.service_disconnected)
+                    else -> getString(R.string.service_waiting_login)
                 }
                 notificationManager().notify(NOTIFICATION_ID, buildNotification(text))
 
@@ -200,10 +200,10 @@ class TdService : LifecycleService() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Ponte Telegram",
+            getString(R.string.service_channel),
             NotificationManager.IMPORTANCE_LOW
         ).apply {
-            description = "Mantiene attiva la connessione verso l'orologio"
+            description = getString(R.string.service_channel_desc)
             setShowBadge(false)
         }
         notificationManager().createNotificationChannel(channel)
@@ -211,7 +211,7 @@ class TdService : LifecycleService() {
 
     private fun buildNotification(text: String): Notification =
         NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Ted")
+            .setContentTitle(getString(R.string.app_name))
             .setContentText(text)
             .setSmallIcon(R.drawable.ic_ted_send)
             .setOngoing(true)
