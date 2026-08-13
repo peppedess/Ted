@@ -28,6 +28,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.core.content.ContextCompat
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -415,10 +418,15 @@ private fun VoiceRoute(
     val state by VoicePlayer.state.collectAsState()
 
     // Il volume di sistema puo cambiare da fuori: lo rileggiamo di continuo.
-    val volume by produceState(initialValue = 0, key1 = Unit) {
-        while (true) {
-            value = VoicePlayer.volume(context)
-            delay(400)
+    // Legato al ciclo di vita: a schermo spento non ha senso interrogare
+    // AudioManager due volte al secondo.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val volume by produceState(initialValue = VoicePlayer.volume(context), key1 = Unit) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            while (true) {
+                value = VoicePlayer.volume(context)
+                delay(1_000)
+            }
         }
     }
     val volumeMax = remember { VoicePlayer.volumeMax(context) }

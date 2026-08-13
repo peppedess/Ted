@@ -52,7 +52,7 @@ class TdClient(
 
     private val _updates = MutableSharedFlow<TdApi.Object>(
         replay = 0,
-        extraBufferCapacity = 512,
+        extraBufferCapacity = 64,
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
     val updates: SharedFlow<TdApi.Object> = _updates
@@ -75,7 +75,30 @@ class TdClient(
         if (obj is TdApi.UpdateAuthorizationState) {
             onAuthState(obj.authorizationState)
         }
-        _updates.tryEmit(obj)
+        if (isRelevant(obj)) _updates.tryEmit(obj)
+    }
+
+    /**
+     * Tipi di update che qualcuno consuma davvero.
+     *
+     * TDLib ne genera migliaia al minuto: presenza online, stato di lettura,
+     * digitazione, opzioni interne. Emetterli tutti significava svegliare i
+     * collector per nulla e tenere occupata la CPU.
+     */
+    private fun isRelevant(obj: TdApi.Object): Boolean = when (obj) {
+        is TdApi.UpdateAuthorizationState,
+        is TdApi.UpdateUser,
+        is TdApi.UpdateNewMessage,
+        is TdApi.UpdateNewChat,
+        is TdApi.UpdateChatLastMessage,
+        is TdApi.UpdateChatReadInbox,
+        is TdApi.UpdateChatTitle,
+        is TdApi.UpdateChatPhoto,
+        is TdApi.UpdateChatPosition,
+        is TdApi.UpdateChatNotificationSettings,
+        is TdApi.UpdateDeleteMessages,
+        is TdApi.UpdateMessageContent -> true
+        else -> false
     }
 
     private fun onAuthState(state: TdApi.AuthorizationState) {

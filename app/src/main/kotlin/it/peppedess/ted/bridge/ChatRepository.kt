@@ -40,6 +40,32 @@ class ChatRepository(
 
     // Gli avatar cambiano di rado: scaricarli a ogni refresh sarebbe uno spreco.
     private val avatarCache = ConcurrentHashMap<String, ByteArray>()
+
+    /**
+     * TdApi.Chat per id. Senza, ogni refresh rifaceva 25 GetChat anche
+     * quando era cambiata una sola conversazione.
+     */
+    private val chatCache = ConcurrentHashMap<Long, TdApi.Chat>()
+
+    /** Chat da rileggere davvero al prossimo refresh. */
+    private val dirtyChats = ConcurrentHashMap.newKeySet<Long>()
+
+    /** Miniature gia scaricate e ricompresse, sfrattate dalle meno usate. */
+    private val photoCache = object : LinkedHashMap<String, ByteArray>(32, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ByteArray>) =
+            size > MAX_PHOTO_CACHE
+    }
+
+    private suspend fun chatOf(chatId: Long): TdApi.Chat? {
+        val cached = chatCache[chatId]
+        if (cached != null && chatId !in dirtyChats) return cached
+        val fresh = runCatching {
+            td.send(TdApi.GetChat().apply { this.chatId = chatId })
+        }.getOrNull() ?: return cached
+        chatCache[chatId] = fresh
+        dirtyChats -= chatId
+        return fresh
+    }
     private val refreshRequests = Channel<Unit>(Channel.CONFLATED)
 
     private val _chats = MutableStateFlow(ChatList(emptyList(), 0))
@@ -82,25 +108,40 @@ class ChatRepository(
 
             is TdApi.UpdateNewMessage -> {
                 val message = obj.message
+                dirtyChats += message.chatId
                 if (!message.isOutgoing) scope.launch { emitAlert(message) }
                 requestRefresh()
             }
 
+            is TdApi.UpdateChatLastMessage -> {
+                dirtyChats += obj.chatId
+                requestRefresh()
+            }
+
+            is TdApi.UpdateChatReadInbox -> {
+                dirtyChats += obj.chatId
+                requestRefresh()
+            }
+
+            is TdApi.UpdateChatTitle -> {
+                dirtyChats += obj.chatId
+                requestRefresh()
+            }
+
+            is TdApi.UpdateChatNotificationSettings -> {
+                dirtyChats += obj.chatId
+                requestRefresh()
+            }
+
             is TdApi.UpdateNewChat,
-            is TdApi.UpdateChatLastMessage,
-            is TdApi.UpdateChatReadInbox,
-            is TdApi.UpdateChatTitle,
-            is TdApi.UpdateChatPosition,
-            is TdApi.UpdateChatNotificationSettings -> requestRefresh()
+            is TdApi.UpdateChatPosition -> requestRefresh()
 
             else -> Unit
         }
     }
 
     private suspend fun emitAlert(message: TdApi.Message) {
-        val chat = runCatching {
-            td.send(TdApi.GetChat().apply { chatId = message.chatId })
-        }.getOrNull() ?: return
+        val chat = chatOf(message.chatId) ?: return
 
         // Le chat silenziate restano silenziate anche sul polso.
         if ((chat.notificationSettings?.muteFor ?: 0) > 0) {
@@ -145,10 +186,7 @@ class ChatRepository(
         ).chatIds.toList()
 
         val summaries = ids.mapNotNull { id ->
-            runCatching {
-                val chat = td.send(TdApi.GetChat().apply { chatId = id })
-                ChatMapper.toSummary(chat, users)
-            }.getOrNull()
+            chatOf(id)?.let { ChatMapper.toSummary(it, users) }
         }
 
         // Solo per le chat in cima: piu giu non si guardano comunque.
@@ -164,7 +202,10 @@ class ChatRepository(
     }
 
     suspend fun loadThread(chatId: Long, limit: Int): ThreadPayload {
-        val chat = td.send(TdApi.GetChat().apply { this.chatId = chatId })
+        val chat = chatOf(chatId) ?: return ThreadPayload(
+            ChatThread(chatId, "", emptyList(), revision),
+            emptyMap()
+        )
 
         val rawMessages = fetchRaw(chatId, limit)
         val messages = rawMessages.map { MessageMapper.toMessage(it, users) }
@@ -284,9 +325,7 @@ class ChatRepository(
     fun avatars(): Map<String, ByteArray> = avatarCache.toMap()
 
     private suspend fun avatarBytes(chatId: Long): ByteArray? {
-        val chat = runCatching {
-            td.send(TdApi.GetChat().apply { this.chatId = chatId })
-        }.getOrNull() ?: return null
+        val chat = chatOf(chatId) ?: return null
         val photo = chat.photo ?: return null
         val path = downloadFile(photo.small.id) ?: return null
         return MediaScaler.avatar(path)
@@ -306,13 +345,18 @@ class ChatRepository(
     }.getOrNull()
 
     private suspend fun photoThumb(message: TdApi.Message): ByteArray? {
+        val key = MessageMapper.photoKey(message.id)
+        synchronized(photoCache) { photoCache[key] }?.let { return it }
+
         val content = message.content as? TdApi.MessagePhoto ?: return null
         val sizes = content.photo.sizes.filterNotNull()
         if (sizes.isEmpty()) return null
         // La piu piccola che superi i 200 px, altrimenti la piu grande disponibile.
         val chosen = sizes.firstOrNull { it.width >= 200 || it.height >= 200 } ?: sizes.last()
         val path = downloadFile(chosen.photo.id) ?: return null
-        return MediaScaler.thumbnail(path)?.bytes
+        val bytes = MediaScaler.thumbnail(path)?.bytes ?: return null
+        synchronized(photoCache) { photoCache[key] = bytes }
+        return bytes
     }
 
     /** Vocale, scaricato solo su richiesta esplicita dall'orologio. */
@@ -421,5 +465,6 @@ class ChatRepository(
         private const val TAG = "ChatRepository"
         private const val MAX_PHOTOS = 12
         private const val MAX_AVATARS = 20
+        private const val MAX_PHOTO_CACHE = 60
     }
 }
