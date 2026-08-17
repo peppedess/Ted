@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
@@ -79,11 +80,15 @@ class TdService : LifecycleService() {
             }
         }
 
+        // Ogni put accende la radio dell'orologio: accorpiamo le raffiche.
+        // Dieci messaggi in un minuto diventano una sincronizzazione, non dieci.
         lifecycleScope.launch {
-            repository.chats.collectLatest { list ->
-                if (list.chats.isEmpty()) return@collectLatest
-                runCatching { bridge.publishChats(list, repository.avatars()) }
-            }
+            repository.chats
+                .debounce(PUBLISH_DEBOUNCE_MS)
+                .collectLatest { list ->
+                    if (list.chats.isEmpty()) return@collectLatest
+                    runCatching { bridge.publishChats(list, repository.avatars()) }
+                }
         }
 
         // Ogni cambio di preferenze scende sull'orologio.
@@ -109,7 +114,9 @@ class TdService : LifecycleService() {
         lifecycleScope.launch {
             while (true) {
                 delay(60_000)
-                if (Settings.prefs.value.alerts) continue
+                // Lo spegnimento vale anche con le notifiche accese: tenere
+                // TDLib connesso h24 e la voce di consumo piu pesante di tutte.
+                // L'orologio risveglia il telefono quando serve.
                 val idleMinutes = (System.currentTimeMillis() - lastActivity) / 60_000
                 if (idleMinutes >= Settings.IDLE_MINUTES) {
                     android.util.Log.d(TAG, "inattivo da $idleMinutes min, mi spengo")
@@ -221,6 +228,9 @@ class TdService : LifecycleService() {
 
     companion object {
         private const val TAG = "TdService"
+
+        /** Finestra di calma prima di pubblicare la lista chat. */
+        private const val PUBLISH_DEBOUNCE_MS = 30_000L
 
         private val _running = MutableStateFlow(false)
 

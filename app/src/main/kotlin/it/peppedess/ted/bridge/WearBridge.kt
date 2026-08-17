@@ -25,6 +25,9 @@ class WearBridge(context: Context) {
     private val capabilityClient = Wearable.getCapabilityClient(app)
     private val nodeClient = Wearable.getNodeClient(app)
 
+    /** Chiavi degli avatar gia spediti: rimandarli e traffico sprecato. */
+    private var lastAvatarKeys: Set<String> = emptySet()
+
     suspend fun publishChats(list: ChatList, avatars: Map<String, ByteArray> = emptyMap()) {
         val trimmed = fitPayload(list)
         val payload = TedCodec.encode(trimmed)
@@ -33,9 +36,11 @@ class WearBridge(context: Context) {
         val request = PutDataMapRequest.create(TedPaths.CHATS).apply {
             dataMap.putByteArray(TedPaths.KEY_PAYLOAD, payload)
             dataMap.putLong(TedPaths.KEY_REVISION, trimmed.revision)
-            avatars.filterKeys { it in wanted }.forEach { (key, bytes) ->
+            val toSend = avatars.filterKeys { it in wanted }
+            toSend.forEach { (key, bytes) ->
                 dataMap.putAsset(key, Asset.createFromBytes(bytes))
             }
+            lastAvatarKeys = toSend.keys
         }.asPutDataRequest().setUrgent()
         dataClient.putDataItem(request).await()
         Log.d(TAG, "pubblicate ${trimmed.chats.size} chat, ${payload.size} byte")

@@ -21,8 +21,11 @@ object Settings {
     private const val KEY_DYNAMIC = "dynamic_colors"
     private const val KEY_REVISION = "revision"
 
-    /** Minuti di inattivita dopo i quali il ponte si spegne da solo. */
-    const val IDLE_MINUTES = 10L
+    /**
+     * Minuti di inattivita dopo i quali il ponte si spegne da solo.
+     * Cinque bastano: l'orologio lo risveglia quando riapri l'app.
+     */
+    const val IDLE_MINUTES = 5L
 
     private val _prefs = MutableStateFlow(Preferences())
     val prefs: StateFlow<Preferences> = _prefs.asStateFlow()

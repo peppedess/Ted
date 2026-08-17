@@ -100,10 +100,15 @@ private fun WearRoot(initialChatId: Long? = null) {
         if (initialChatId != null) navController.navigate("chat/$initialChatId")
     }
 
+    // Fermo quando l'app non e in primo piano: a schermo spento non serve
+    // nessuno a guardare l'orologio, e ogni risveglio costa.
+    val lifecycleOwner = LocalLifecycleOwner.current
     val now by produceState(initialValue = System.currentTimeMillis() / 1000) {
-        while (true) {
-            delay(60_000)
-            value = System.currentTimeMillis() / 1000
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            while (true) {
+                value = System.currentTimeMillis() / 1000
+                delay(60_000)
+            }
         }
     }
 
@@ -192,9 +197,14 @@ private fun ChatsRoute(
     var wakeError by remember { mutableStateOf<String?>(null) }
 
     // All'apertura svegliamo il telefono: TDLib non gira h24, parte su richiesta.
+    // Solo quando l'app torna in primo piano: prima partiva anche
+    // in ricomposizioni che non avevano nulla a che vedere.
+    val chatsLifecycle = LocalLifecycleOwner.current
     LaunchedEffect(Unit) {
-        runCatching { bridge.send(WatchCommand.Wake) }
-            .onFailure { wakeError = it.message }
+        chatsLifecycle.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            runCatching { bridge.send(WatchCommand.Wake) }
+                .onFailure { wakeError = it.message }
+        }
     }
 
     val chats = chatList?.list?.chats
